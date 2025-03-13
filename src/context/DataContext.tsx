@@ -231,10 +231,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setHearings(MOCK_HEARINGS);
       setEvidences(MOCK_EVIDENCES);
       
-      // Combine auth users and additional mock users
-      const authUsers = Object.values(JSON.parse(localStorage.getItem('courtwise_user') || '{}')).filter(Boolean);
-      setUsers([...(Array.isArray(authUsers) ? authUsers : [authUsers]), ...MOCK_ADDITIONAL_USERS]);
+      // Fix the type error by properly handling the localStorage data
+      const storedUserData = localStorage.getItem('courtwise_user');
+      let authUser: User | null = null;
       
+      if (storedUserData) {
+        try {
+          // Parse the data and ensure it has the required User properties
+          const parsedUser = JSON.parse(storedUserData);
+          if (parsedUser && 
+              typeof parsedUser.id === 'string' && 
+              typeof parsedUser.name === 'string' && 
+              typeof parsedUser.email === 'string' && 
+              typeof parsedUser.role === 'string') {
+            authUser = parsedUser as User;
+          }
+        } catch (error) {
+          console.error("Error parsing user data from localStorage:", error);
+        }
+      }
+      
+      // Combine auth user (if valid) with additional mock users
+      const combinedUsers: User[] = [
+        ...(authUser ? [authUser] : []),
+        ...MOCK_ADDITIONAL_USERS
+      ];
+      
+      setUsers(combinedUsers);
       setLoading(false);
     }, 1000);
   };
