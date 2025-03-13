@@ -10,6 +10,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Gavel, User, UserCog, Scale } from "lucide-react";
+
+// Role icon mapping component
+const RoleIcon = ({ role }: { role: UserRole }) => {
+  switch (role) {
+    case 'client':
+      return <User className="h-5 w-5 mr-2 text-blue-500" />;
+    case 'lawyer':
+      return <Scale className="h-5 w-5 mr-2 text-green-500" />;
+    case 'clerk':
+      return <UserCog className="h-5 w-5 mr-2 text-purple-500" />;
+    case 'judge':
+      return <Gavel className="h-5 w-5 mr-2 text-red-500" />;
+    default:
+      return null;
+  }
+};
 
 export const AuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -120,10 +137,30 @@ export const AuthForm = () => {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client">Client</SelectItem>
-                    <SelectItem value="lawyer">Lawyer</SelectItem>
-                    <SelectItem value="clerk">Clerk</SelectItem>
-                    <SelectItem value="judge">Judge</SelectItem>
+                    <SelectItem value="client">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-blue-500" />
+                        Client
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="lawyer">
+                      <div className="flex items-center">
+                        <Scale className="h-4 w-4 mr-2 text-green-500" />
+                        Lawyer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="clerk">
+                      <div className="flex items-center">
+                        <UserCog className="h-4 w-4 mr-2 text-purple-500" />
+                        Clerk
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="judge">
+                      <div className="flex items-center">
+                        <Gavel className="h-4 w-4 mr-2 text-red-500" />
+                        Judge
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -191,10 +228,30 @@ export const AuthForm = () => {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client">Client</SelectItem>
-                    <SelectItem value="lawyer">Lawyer</SelectItem>
-                    <SelectItem value="clerk">Clerk</SelectItem>
-                    <SelectItem value="judge">Judge</SelectItem>
+                    <SelectItem value="client">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-blue-500" />
+                        Client
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="lawyer">
+                      <div className="flex items-center">
+                        <Scale className="h-4 w-4 mr-2 text-green-500" />
+                        Lawyer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="clerk">
+                      <div className="flex items-center">
+                        <UserCog className="h-4 w-4 mr-2 text-purple-500" />
+                        Clerk
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="judge">
+                      <div className="flex items-center">
+                        <Gavel className="h-4 w-4 mr-2 text-red-500" />
+                        Judge
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

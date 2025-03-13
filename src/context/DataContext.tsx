@@ -33,62 +33,20 @@ interface DataContextType {
   // User operations
   getUsersByRole: (role: UserRole) => User[];
   getUserById: (id: string) => User | undefined;
+  
+  // Case request operations
+  acceptCaseRequest: (requestId: string) => Promise<void>;
+  rejectCaseRequest: (requestId: string) => Promise<void>;
+  
+  // Data operations
+  clearAllData: () => void;
 
   loading: boolean;
   refetch: () => void;
 }
 
-// Sample data
-const MOCK_CASES: Case[] = [
-  {
-    id: '1',
-    title: 'Smith vs. Johnson',
-    description: 'Property dispute over boundary lines',
-    caseNumber: 'CV-2023-1001',
-    status: 'active',
-    clientId: '1',
-    lawyerId: '2',
-    createdAt: '2023-01-15T08:00:00Z',
-    updatedAt: '2023-06-20T14:30:00Z',
-    nextHearingDate: '2023-07-15T09:00:00Z',
-    filedDate: '2023-01-10T10:15:00Z',
-    courtRoom: 'Room 302',
-    judgeName: 'Judge Honor'
-  },
-  {
-    id: '2',
-    title: 'State vs. Williams',
-    description: 'Criminal case for theft',
-    caseNumber: 'CR-2023-0568',
-    status: 'scheduled',
-    clientId: '5',
-    lawyerId: '2',
-    createdAt: '2023-03-05T10:30:00Z',
-    updatedAt: '2023-06-18T11:45:00Z',
-    nextHearingDate: '2023-07-20T10:30:00Z',
-    filedDate: '2023-03-01T09:00:00Z',
-    courtRoom: 'Room 201',
-    judgeName: 'Judge Honor'
-  },
-  {
-    id: '3',
-    title: 'Davis Divorce',
-    description: 'Divorce settlement and custody',
-    caseNumber: 'FM-2023-0442',
-    status: 'in_progress',
-    clientId: '6',
-    lawyerId: '7',
-    createdAt: '2023-02-20T14:15:00Z',
-    updatedAt: '2023-06-25T16:00:00Z',
-    nextHearingDate: '2023-07-10T13:00:00Z',
-    filedDate: '2023-02-18T11:30:00Z',
-    courtRoom: 'Room 405',
-    judgeName: 'Judge Walker'
-  }
-];
-
-// Mock users beyond our auth users
-const MOCK_ADDITIONAL_USERS: User[] = [
+// Initial data
+const INITIAL_USERS: User[] = [
   {
     id: '5',
     name: 'Michael Williams',
@@ -112,105 +70,6 @@ const MOCK_ADDITIONAL_USERS: User[] = [
   }
 ];
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    senderId: '1',
-    senderRole: 'client',
-    recipientId: '2',
-    recipientRole: 'lawyer',
-    caseId: '1',
-    content: 'When is our next court date?',
-    read: true,
-    createdAt: '2023-06-15T09:30:00Z'
-  },
-  {
-    id: '2',
-    senderId: '2',
-    senderRole: 'lawyer',
-    recipientId: '1',
-    recipientRole: 'client',
-    caseId: '1',
-    content: 'Our next court date is scheduled for July 15th at 9:00 AM in Room 302.',
-    read: true,
-    createdAt: '2023-06-15T10:15:00Z'
-  },
-  {
-    id: '3',
-    senderId: '2',
-    senderRole: 'lawyer',
-    recipientId: '3',
-    recipientRole: 'clerk',
-    caseId: '1',
-    content: 'Could we get a copy of the latest filing for the Smith case?',
-    read: false,
-    createdAt: '2023-06-18T14:20:00Z'
-  }
-];
-
-const MOCK_HEARINGS: Hearing[] = [
-  {
-    id: '1',
-    caseId: '1',
-    date: '2023-07-15',
-    time: '09:00',
-    location: 'Room 302',
-    description: 'Initial hearing for property dispute',
-    status: 'scheduled'
-  },
-  {
-    id: '2',
-    caseId: '2',
-    date: '2023-07-20',
-    time: '10:30',
-    location: 'Room 201',
-    description: 'First hearing for criminal theft case',
-    status: 'scheduled'
-  },
-  {
-    id: '3',
-    caseId: '3',
-    date: '2023-07-10',
-    time: '13:00',
-    location: 'Room 405',
-    description: 'Divorce settlement negotiation',
-    status: 'scheduled'
-  }
-];
-
-const MOCK_EVIDENCES: Evidence[] = [
-  {
-    id: '1',
-    caseId: '1',
-    title: 'Property Deed',
-    description: 'Official property deed showing boundary lines',
-    fileUrl: '/documents/property-deed.pdf',
-    uploadedBy: '2',
-    uploadedAt: '2023-05-20T11:30:00Z',
-    fileType: 'application/pdf'
-  },
-  {
-    id: '2',
-    caseId: '1',
-    title: 'Survey Map',
-    description: 'Professional survey of the property boundaries',
-    fileUrl: '/documents/survey-map.jpg',
-    uploadedBy: '1',
-    uploadedAt: '2023-05-22T14:45:00Z',
-    fileType: 'image/jpeg'
-  },
-  {
-    id: '3',
-    caseId: '2',
-    title: 'Security Camera Footage',
-    description: 'Video evidence from store security camera',
-    fileUrl: '/documents/security-footage.mp4',
-    uploadedBy: '2',
-    uploadedAt: '2023-04-15T09:20:00Z',
-    fileType: 'video/mp4'
-  }
-];
-
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -221,46 +80,103 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [evidences, setEvidences] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [caseRequests, setCaseRequests] = useState<any[]>([]);
 
   const loadInitialData = () => {
     setLoading(true);
-    // Simulate fetching data
-    setTimeout(() => {
-      setCases(MOCK_CASES);
-      setMessages(MOCK_MESSAGES);
-      setHearings(MOCK_HEARINGS);
-      setEvidences(MOCK_EVIDENCES);
-      
-      // Fix the type error by properly handling the localStorage data
-      const storedUserData = localStorage.getItem('courtwise_user');
-      let authUser: User | null = null;
-      
-      if (storedUserData) {
+    
+    // Load data from localStorage or use initial values
+    const loadFromStorage = <T,>(key: string, initialData: T[] = []): T[] => {
+      const stored = localStorage.getItem(`courtwise_${key}`);
+      if (stored) {
         try {
-          // Parse the data and ensure it has the required User properties
-          const parsedUser = JSON.parse(storedUserData);
-          if (parsedUser && 
-              typeof parsedUser.id === 'string' && 
-              typeof parsedUser.name === 'string' && 
-              typeof parsedUser.email === 'string' && 
-              typeof parsedUser.role === 'string') {
-            authUser = parsedUser as User;
-          }
+          return JSON.parse(stored) as T[];
         } catch (error) {
-          console.error("Error parsing user data from localStorage:", error);
+          console.error(`Error parsing ${key} from localStorage:`, error);
+          return initialData;
         }
       }
-      
-      // Combine auth user (if valid) with additional mock users
-      const combinedUsers: User[] = [
-        ...(authUser ? [authUser] : []),
-        ...MOCK_ADDITIONAL_USERS
-      ];
-      
-      setUsers(combinedUsers);
-      setLoading(false);
-    }, 1000);
+      return initialData;
+    };
+    
+    // Load all data
+    const storedCases = loadFromStorage<Case>('cases', []);
+    const storedMessages = loadFromStorage<Message>('messages', []);
+    const storedHearings = loadFromStorage<Hearing>('hearings', []);
+    const storedEvidences = loadFromStorage<Evidence>('evidences', []);
+    const storedCaseRequests = loadFromStorage('caseRequests', []);
+    
+    // Fix the type error by properly handling the localStorage data
+    const storedUserData = localStorage.getItem('courtwise_user');
+    let authUser: User | null = null;
+    
+    if (storedUserData) {
+      try {
+        // Parse the data and ensure it has the required User properties
+        const parsedUser = JSON.parse(storedUserData);
+        if (parsedUser && 
+            typeof parsedUser.id === 'string' && 
+            typeof parsedUser.name === 'string' && 
+            typeof parsedUser.email === 'string' && 
+            typeof parsedUser.role === 'string') {
+          authUser = parsedUser as User;
+        }
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+      }
+    }
+    
+    // Get stored users
+    const storedUsers = loadFromStorage<User>('users', INITIAL_USERS);
+    
+    // Combine auth user (if valid) with stored users, ensuring no duplicates
+    let combinedUsers: User[] = [...storedUsers];
+    
+    if (authUser) {
+      const userExists = combinedUsers.some(u => u.id === authUser!.id);
+      if (!userExists) {
+        combinedUsers.push(authUser);
+      } else {
+        // Update existing user with latest data
+        combinedUsers = combinedUsers.map(u => 
+          u.id === authUser!.id ? authUser! : u
+        );
+      }
+    }
+    
+    setCases(storedCases);
+    setMessages(storedMessages);
+    setHearings(storedHearings);
+    setEvidences(storedEvidences);
+    setUsers(combinedUsers);
+    setCaseRequests(storedCaseRequests);
+    
+    // Save initial data if not exists
+    if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify([]));
+    if (storedMessages.length === 0) localStorage.setItem('courtwise_messages', JSON.stringify([]));
+    if (storedHearings.length === 0) localStorage.setItem('courtwise_hearings', JSON.stringify([]));
+    if (storedEvidences.length === 0) localStorage.setItem('courtwise_evidences', JSON.stringify([]));
+    if (storedCaseRequests.length === 0) localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
+    
+    if (storedUsers.length === 0) {
+      localStorage.setItem('courtwise_users', JSON.stringify(INITIAL_USERS));
+      setUsers(INITIAL_USERS);
+    }
+    
+    setLoading(false);
   };
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('courtwise_cases', JSON.stringify(cases));
+      localStorage.setItem('courtwise_messages', JSON.stringify(messages));
+      localStorage.setItem('courtwise_hearings', JSON.stringify(hearings));
+      localStorage.setItem('courtwise_evidences', JSON.stringify(evidences));
+      localStorage.setItem('courtwise_users', JSON.stringify(users));
+      localStorage.setItem('courtwise_caseRequests', JSON.stringify(caseRequests));
+    }
+  }, [cases, messages, hearings, evidences, users, caseRequests, loading]);
 
   useEffect(() => {
     if (user) {
@@ -291,7 +207,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const caseToAdd: Case = {
       ...newCase,
-      id: `${cases.length + 1}`,
+      id: `${Date.now()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -326,7 +242,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const newMessage: Message = {
       ...message,
-      id: `${messages.length + 1}`,
+      id: `${Date.now()}`,
       createdAt: new Date().toISOString(),
       read: false
     };
@@ -344,7 +260,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const newHearing: Hearing = {
       ...hearing,
-      id: `${hearings.length + 1}`
+      id: `${Date.now()}`
     };
     
     setHearings(prev => [...prev, newHearing]);
@@ -372,7 +288,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const newEvidence: Evidence = {
       ...evidence,
-      id: `${evidences.length + 1}`
+      id: `${Date.now()}`
     };
     
     setEvidences(prev => [...prev, newEvidence]);
@@ -383,6 +299,62 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getUsersByRole = (role: UserRole) => users.filter(u => u.role === role);
   
   const getUserById = (id: string) => users.find(u => u.id === id);
+
+  // Case request operations
+  const acceptCaseRequest = async (requestId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const request = caseRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    // Update request status
+    setCaseRequests(prev => 
+      prev.map(r => r.id === requestId ? { ...r, status: "accepted" } : r)
+    );
+    
+    // Create a new case from the request
+    if (user && user.role === 'lawyer') {
+      const newCase: Omit<Case, 'id' | 'createdAt' | 'updatedAt'> = {
+        title: request.caseTitle,
+        description: request.description,
+        caseNumber: `CV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        status: 'active',
+        clientId: request.clientId || '5', // Default if not specified
+        lawyerId: user.id,
+        nextHearingDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        filedDate: new Date().toISOString(),
+        courtRoom: 'To be assigned',
+        judgeName: 'To be assigned'
+      };
+      
+      await createCase(newCase);
+    }
+  };
+  
+  const rejectCaseRequest = async (requestId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    setCaseRequests(prev => 
+      prev.map(r => r.id === requestId ? { ...r, status: "rejected" } : r)
+    );
+  };
+  
+  // Utility to clear all data (for testing)
+  const clearAllData = () => {
+    localStorage.removeItem('courtwise_cases');
+    localStorage.removeItem('courtwise_messages');
+    localStorage.removeItem('courtwise_hearings');
+    localStorage.removeItem('courtwise_evidences');
+    localStorage.removeItem('courtwise_users');
+    localStorage.removeItem('courtwise_caseRequests');
+    
+    setCases([]);
+    setMessages([]);
+    setHearings([]);
+    setEvidences([]);
+    setUsers(INITIAL_USERS);
+    setCaseRequests([]);
+  };
 
   const refetch = () => {
     loadInitialData();
@@ -410,6 +382,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addEvidence,
         getUsersByRole,
         getUserById,
+        acceptCaseRequest,
+        rejectCaseRequest,
+        clearAllData,
         loading,
         refetch
       }}
