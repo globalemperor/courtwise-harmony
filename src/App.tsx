@@ -14,6 +14,17 @@ import MainLayout from "./components/layout/MainLayout";
 import { AuthProvider } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
 
+// New page imports
+import Messages from "./pages/Messages";
+import Hearings from "./pages/Hearings";
+import Clients from "./pages/Clients";
+import CaseRequests from "./pages/CaseRequests";
+import FindLawyer from "./pages/FindLawyer";
+import Docket from "./pages/Docket";
+import Schedule from "./pages/Schedule";
+import CaseSummary from "./pages/CaseSummary";
+import NewCases from "./pages/NewCases";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,9 +42,31 @@ const App = () => (
               {/* Protected Routes */}
               <Route path="/" element={<MainLayout />}>
                 <Route path="dashboard" element={<Dashboard />} />
+                
+                {/* Case Management */}
                 <Route path="cases" element={<Cases />} />
                 <Route path="cases/:id" element={<CaseDetails />} />
-                {/* Add more routes as needed */}
+                
+                {/* Communication */}
+                <Route path="messages" element={<Messages />} />
+                
+                {/* Scheduling */}
+                <Route path="hearings" element={<Hearings />} />
+                <Route path="schedule" element={<Schedule />} />
+                
+                {/* Client Management */}
+                <Route path="clients" element={<Clients />} />
+                <Route path="find-lawyer" element={<FindLawyer />} />
+                
+                {/* Lawyer Specific */}
+                <Route path="case-requests" element={<CaseRequests />} />
+                
+                {/* Judge Specific */}
+                <Route path="docket" element={<Docket />} />
+                <Route path="case-summary" element={<CaseSummary />} />
+                
+                {/* Clerk Specific */}
+                <Route path="new-cases" element={<NewCases />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
