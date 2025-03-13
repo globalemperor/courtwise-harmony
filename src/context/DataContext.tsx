@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Case, Message, Hearing, Evidence, User, UserRole } from '@/types';
 import { useAuth } from './AuthContext';
@@ -45,7 +44,7 @@ interface DataContextType {
   refetch: () => void;
 }
 
-// Initial data
+// Initial users data only - not cases
 const INITIAL_USERS: User[] = [
   {
     id: '5',
@@ -126,8 +125,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
-    // Get stored users
-    const storedUsers = loadFromStorage<User>('users', INITIAL_USERS);
+    // Get stored users - don't use default users if data exists already
+    const storedUsers = loadFromStorage<User>('users', []);
     
     // Combine auth user (if valid) with stored users, ensuring no duplicates
     let combinedUsers: User[] = [...storedUsers];
@@ -144,6 +143,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
+    // Only use initial users if there are no users in the system yet
+    if (combinedUsers.length === 0) {
+      combinedUsers = INITIAL_USERS;
+    }
+    
     setCases(storedCases);
     setMessages(storedMessages);
     setHearings(storedHearings);
@@ -151,7 +155,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(combinedUsers);
     setCaseRequests(storedCaseRequests);
     
-    // Save initial data if not exists
+    // Save initial data structure if not exists
     if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify([]));
     if (storedMessages.length === 0) localStorage.setItem('courtwise_messages', JSON.stringify([]));
     if (storedHearings.length === 0) localStorage.setItem('courtwise_hearings', JSON.stringify([]));
@@ -159,8 +163,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedCaseRequests.length === 0) localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
     
     if (storedUsers.length === 0) {
-      localStorage.setItem('courtwise_users', JSON.stringify(INITIAL_USERS));
-      setUsers(INITIAL_USERS);
+      localStorage.setItem('courtwise_users', JSON.stringify(combinedUsers));
     }
     
     setLoading(false);
@@ -300,7 +303,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const getUserById = (id: string) => users.find(u => u.id === id);
 
-  // Case request operations
+  // Case request operations - FIXED to properly create the case
   const acceptCaseRequest = async (requestId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
@@ -319,7 +322,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: request.description,
         caseNumber: `CV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
         status: 'active',
-        clientId: request.clientId || '5', // Default if not specified
+        clientId: request.clientId,
         lawyerId: user.id,
         nextHearingDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
         filedDate: new Date().toISOString(),
@@ -327,6 +330,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         judgeName: 'To be assigned'
       };
       
+      // Actually create the case and add it to the list
       await createCase(newCase);
     }
   };

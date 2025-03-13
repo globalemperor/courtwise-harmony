@@ -59,7 +59,7 @@ const INITIAL_CASE_REQUESTS: CaseRequest[] = [
 
 const CaseRequests = () => {
   const { user } = useAuth();
-  const { acceptCaseRequest, rejectCaseRequest, getUsersByRole } = useData();
+  const { acceptCaseRequest, rejectCaseRequest, getUsersByRole, cases } = useData();
   const [caseRequests, setCaseRequests] = useState<CaseRequest[]>([]);
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseDescription, setNewCaseDescription] = useState("");
@@ -72,29 +72,27 @@ const CaseRequests = () => {
     if (storedRequests) {
       try {
         const parsedRequests = JSON.parse(storedRequests);
-        if (Array.isArray(parsedRequests) && parsedRequests.length > 0) {
+        if (Array.isArray(parsedRequests)) {
           setCaseRequests(parsedRequests);
         } else {
-          // If empty or not an array, initialize with sample data
-          setCaseRequests(INITIAL_CASE_REQUESTS);
-          localStorage.setItem('courtwise_caseRequests', JSON.stringify(INITIAL_CASE_REQUESTS));
+          // If not an array, initialize with empty array
+          setCaseRequests([]);
+          localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
         }
       } catch (error) {
         console.error("Error parsing case requests:", error);
-        setCaseRequests(INITIAL_CASE_REQUESTS);
-        localStorage.setItem('courtwise_caseRequests', JSON.stringify(INITIAL_CASE_REQUESTS));
+        setCaseRequests([]);
+        localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
       }
     } else {
-      setCaseRequests(INITIAL_CASE_REQUESTS);
-      localStorage.setItem('courtwise_caseRequests', JSON.stringify(INITIAL_CASE_REQUESTS));
+      setCaseRequests([]);
+      localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
     }
   }, []);
 
   // Save case requests to localStorage when they change
   useEffect(() => {
-    if (caseRequests.length > 0) {
-      localStorage.setItem('courtwise_caseRequests', JSON.stringify(caseRequests));
-    }
+    localStorage.setItem('courtwise_caseRequests', JSON.stringify(caseRequests));
   }, [caseRequests]);
 
   const handleAccept = async (id: string) => {
@@ -362,6 +360,23 @@ const CaseRequests = () => {
                     <p className="text-sm text-muted-foreground">
                       {request.description}
                     </p>
+                    {request.status === "accepted" && (
+                      <div className="mt-2 pt-2 border-t border-dashed">
+                        <p className="text-xs font-medium">Related cases:</p>
+                        <div className="mt-1">
+                          {cases
+                            .filter(c => 
+                              c.clientId === request.clientId && 
+                              c.title.includes(request.caseTitle)
+                            )
+                            .map(c => (
+                              <Badge key={c.id} variant="outline" className="mr-2 mb-1">
+                                {c.caseNumber}
+                              </Badge>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
