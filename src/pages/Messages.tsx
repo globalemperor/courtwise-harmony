@@ -85,10 +85,23 @@ const Messages = () => {
     }
 
     try {
+      // Get the recipient user to access their role
+      const recipient = getUserById(selectedUser);
+      if (!recipient) {
+        toast({
+          title: "Recipient not found",
+          description: "The selected recipient could not be found",
+          variant: "destructive"
+        });
+        return;
+      }
+
       await sendMessage({
         content: messageContent,
         senderId: user.id,
+        senderRole: user.role,
         recipientId: selectedUser,
+        recipientRole: recipient.role,
         caseId: selectedCaseId || undefined
       });
 
