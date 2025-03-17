@@ -38,7 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error fetching user profile:', error);
             setUser(null);
           } else if (profile) {
-            setUser(mapSupabaseProfileToUser(profile));
+            // Type assertion to ensure the role is treated as UserRole
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
           }
         }
       } catch (error) {
@@ -65,7 +70,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error fetching user profile:', error);
             setUser(null);
           } else if (profile) {
-            setUser(mapSupabaseProfileToUser(profile));
+            // Type assertion to ensure the role is treated as UserRole
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
