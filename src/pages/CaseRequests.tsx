@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,19 +20,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-// Define the case request type
 interface CaseRequest {
   id: string;
   clientId: string;
   clientName: string;
   clientAvatar: string;
+  lawyerId?: string;
+  lawyerName?: string;
   caseTitle: string;
   description: string;
   requestDate: string;
   status: 'pending' | 'accepted' | 'rejected';
 }
 
-// Sample initial case requests data
 const INITIAL_CASE_REQUESTS: CaseRequest[] = [
   {
     id: "1",
@@ -59,15 +58,14 @@ const INITIAL_CASE_REQUESTS: CaseRequest[] = [
 
 const CaseRequests = () => {
   const { user } = useAuth();
-  const { acceptCaseRequest, rejectCaseRequest, getUsersByRole, cases } = useData();
+  const { acceptCaseRequest, rejectCaseRequest, getUsersByRole, getUserById, cases } = useData();
   const [caseRequests, setCaseRequests] = useState<CaseRequest[]>([]);
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseDescription, setNewCaseDescription] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedLawyerId, setSelectedLawyerId] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load case requests from localStorage or use initial
     const storedRequests = localStorage.getItem('courtwise_caseRequests');
     if (storedRequests) {
       try {
@@ -75,7 +73,6 @@ const CaseRequests = () => {
         if (Array.isArray(parsedRequests)) {
           setCaseRequests(parsedRequests);
         } else {
-          // If not an array, initialize with empty array
           setCaseRequests([]);
           localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
         }
@@ -90,7 +87,6 @@ const CaseRequests = () => {
     }
   }, []);
 
-  // Save case requests to localStorage when they change
   useEffect(() => {
     localStorage.setItem('courtwise_caseRequests', JSON.stringify(caseRequests));
   }, [caseRequests]);
@@ -142,32 +138,28 @@ const CaseRequests = () => {
   };
   
   const handleCreateCaseRequest = () => {
-    if (!newCaseTitle || !newCaseDescription || !selectedClientId) {
+    if (!newCaseTitle || !newCaseDescription) {
       toast({
         title: "Missing information",
-        description: "Please fill out all fields",
+        description: "Please fill out all required fields",
         variant: "destructive"
       });
       return;
     }
     
-    const clients = getUsersByRole('client');
-    const selectedClient = clients.find(c => c.id === selectedClientId);
-    
-    if (!selectedClient) {
-      toast({
-        title: "Client not found",
-        description: "Please select a valid client",
-        variant: "destructive"
-      });
-      return;
+    let lawyerName;
+    if (selectedLawyerId) {
+      const selectedLawyer = getUserById(selectedLawyerId);
+      lawyerName = selectedLawyer?.name;
     }
     
     const newRequest: CaseRequest = {
       id: `${Date.now()}`,
-      clientId: selectedClientId,
-      clientName: selectedClient.name,
-      clientAvatar: selectedClient.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedClient.name)}&background=random`,
+      clientId: user?.id || "",
+      clientName: user?.name || "",
+      clientAvatar: user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || "")}&background=random`,
+      lawyerId: selectedLawyerId || undefined,
+      lawyerName: lawyerName,
       caseTitle: newCaseTitle,
       description: newCaseDescription,
       requestDate: new Date().toISOString(),
@@ -178,24 +170,23 @@ const CaseRequests = () => {
     
     toast({
       title: "Case request created",
-      description: "The case request has been created successfully.",
+      description: "Your legal assistance request has been submitted successfully.",
     });
     
     setNewCaseTitle("");
     setNewCaseDescription("");
-    setSelectedClientId("");
+    setSelectedLawyerId("");
   };
 
-  // Filter by role - lawyers see pending requests, clients see their requests
   const filteredRequests = caseRequests.filter(request => {
     if (!user) return false;
     
     if (user.role === 'lawyer') {
-      return true; // Lawyers see all requests
+      return request.lawyerId === user.id || !request.lawyerId;
     } else if (user.role === 'client') {
-      return request.clientId === user.id; // Clients see only their requests
+      return request.clientId === user.id;
     } else {
-      return true; // Other roles see all
+      return true;
     }
   });
 
@@ -206,55 +197,57 @@ const CaseRequests = () => {
           <h1 className="text-2xl font-bold">Case Requests</h1>
           <p className="text-muted-foreground">
             {user?.role === 'lawyer' 
-              ? "Review and respond to new case requests" 
-              : "Submit and track legal assistance requests"}
+              ? "Review and respond to legal assistance requests" 
+              : "Submit and track requests for legal assistance"}
           </p>
         </div>
         
-        {user?.role === 'lawyer' && (
+        {user?.role === 'client' && (
           <Dialog>
             <DialogTrigger asChild>
               <Button>
-                <UserPlus className="h-4 w-4 mr-2" /> Create Request
+                <UserPlus className="h-4 w-4 mr-2" /> Request Legal Help
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Case Request</DialogTitle>
+                <DialogTitle>Request Legal Assistance</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Client</label>
+                  <label className="text-sm font-medium">Lawyer (Optional)</label>
                   <select 
                     className="w-full p-2 border rounded"
-                    value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    value={selectedLawyerId}
+                    onChange={(e) => setSelectedLawyerId(e.target.value)}
                   >
-                    <option value="">Select a client</option>
-                    {getUsersByRole('client').map(client => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
+                    <option value="">Any available lawyer</option>
+                    {getUsersByRole('lawyer').map(lawyer => (
+                      <option key={lawyer.id} value={lawyer.id}>
+                        {lawyer.name}
                       </option>
                     ))}
                   </select>
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Case Title</label>
+                  <label className="text-sm font-medium">Case Title*</label>
                   <Input
                     value={newCaseTitle}
                     onChange={(e) => setNewCaseTitle(e.target.value)}
                     placeholder="e.g., Property Dispute, Divorce Filing"
+                    required
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-medium">Description*</label>
                   <Textarea
                     value={newCaseDescription}
                     onChange={(e) => setNewCaseDescription(e.target.value)}
-                    placeholder="Describe the legal matter in detail..."
+                    placeholder="Describe your legal matter in detail..."
                     className="min-h-[100px]"
+                    required
                   />
                 </div>
               </div>
@@ -262,7 +255,7 @@ const CaseRequests = () => {
                 <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button onClick={handleCreateCaseRequest}>Create Request</Button>
+                <Button onClick={handleCreateCaseRequest}>Submit Request</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -330,7 +323,6 @@ const CaseRequests = () => {
         )}
       </div>
 
-      {/* Accepted/Rejected Requests */}
       {filteredRequests.some(request => request.status !== "pending") && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Past Requests</h2>
