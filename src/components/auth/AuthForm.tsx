@@ -45,36 +45,53 @@ export const AuthForm = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("client");
 
+  // Form errors
+  const [loginError, setLoginError] = useState("");
+  const [signupError, setSignupError] = useState("");
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError("");
     setIsLoading(true);
 
     try {
       await login(loginEmail, loginPassword, loginRole);
       navigate("/dashboard");
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
-    } catch (error) {
-      // Error is already handled in the login function
+    } catch (error: any) {
+      setLoginError(error.message || "Login failed. Please check your credentials.");
       setIsLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignupError("");
     setIsLoading(true);
+
+    // Basic form validation
+    if (!signupName.trim()) {
+      setSignupError("Name is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!signupEmail.includes('@')) {
+      setSignupError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setSignupError("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       await signup(signupName, signupEmail, signupPassword, signupRole);
       navigate("/dashboard");
-      toast({
-        title: "Account created",
-        description: "Welcome to CourtWise!",
-      });
-    } catch (error) {
-      // Error is already handled in the signup function
+    } catch (error: any) {
+      setSignupError(error.message || "Signup failed. Please try again.");
       setIsLoading(false);
     }
   };
@@ -95,6 +112,11 @@ export const AuthForm = () => {
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
+              {loginError && (
+                <div className="bg-destructive/15 p-3 rounded-md text-destructive text-sm">
+                  {loginError}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -173,6 +195,11 @@ export const AuthForm = () => {
           </CardHeader>
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
+              {signupError && (
+                <div className="bg-destructive/15 p-3 rounded-md text-destructive text-sm">
+                  {signupError}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Name</Label>
                 <Input
@@ -204,6 +231,9 @@ export const AuthForm = () => {
                   onChange={(e) => setSignupPassword(e.target.value)}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-role">User Type</Label>

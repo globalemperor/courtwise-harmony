@@ -20,13 +20,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
+  // Check active session and set up auth state listener
   useEffect(() => {
     // Check for active session on load
     const checkSession = async () => {
       try {
+        console.log("Checking session...");
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
+          console.log("Found existing session:", session.user.id);
           // Fetch the user profile from the profiles table
           const { data: profile, error } = await supabase
             .from('profiles')
@@ -38,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error fetching user profile:', error);
             setUser(null);
           } else if (profile) {
+            console.log("Found profile:", profile);
             // Type assertion to ensure the role is treated as UserRole
             const typedProfile = {
               ...profile,
@@ -45,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             setUser(mapSupabaseProfileToUser(typedProfile));
           }
+        } else {
+          console.log("No active session found");
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -86,6 +92,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               title: 'Welcome back!',
               description: `Logged in as ${profile.name}`,
             });
+          } else {
+            console.error('No profile found after sign in, trying to create one');
+            // Try to create a profile if it doesn't exist
+            const { error: metadataError } = await supabase.auth.updateUser({
+              data: { 
+                name: session.user.email?.split('@')[0],
+                role: 'client'
+              }
+            });
+            
+            if (metadataError) {
+              console.error('Error updating user metadata:', metadataError);
+            }
+            
+            // Create a profile manually
+            const { error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: session.user.id,
+                name: session.user.email?.split('@')[0] || 'User',
+                email: session.user.email || '',
+                role: 'client',
+                avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email?.split('@')[0] || 'User')}&background=random`
+              });
+              
+            if (createError) {
+              console.error('Error creating profile after sign in:', createError);
+            } else {
+              // Fetch the newly created profile
+              const { data: newProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+                
+              if (newProfile) {
+                const typedNewProfile = {
+                  ...newProfile,
+                  role: newProfile.role as UserRole
+                };
+                setUser(mapSupabaseProfileToUser(typedNewProfile));
+              }
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -175,6 +224,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: 'Account created',
             description: 'Your account has been created successfully!',
           });
+          
+          // Set the user immediately after successful signup and profile creation
+          const newUser: User = {
+            id: data.user.id,
+            name,
+            email,
+            role,
+            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+          };
+          setUser(newUser);
         }
       }
       
