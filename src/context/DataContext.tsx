@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Case, Message, Hearing, Evidence, User, UserRole } from '@/types';
+import { Case, Message, Hearing, Evidence, User, UserRole, CaseStatus } from '@/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -142,7 +142,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: c.title,
           description: c.description,
           caseNumber: c.case_number,
-          status: c.status,
+          status: c.status as CaseStatus,
           clientId: c.client_id,
           lawyerId: c.primary_lawyer_id,
           createdAt: c.created_at,
@@ -306,7 +306,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: c.title,
             description: c.description,
             caseNumber: c.case_number,
-            status: c.status,
+            status: c.status as CaseStatus,
             clientId: c.client_id,
             lawyerId: c.primary_lawyer_id,
             createdAt: c.created_at,
@@ -363,7 +363,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             next_hearing_date: newCase.nextHearingDate,
             filed_date: newCase.filedDate,
             court_room: newCase.courtRoom,
-            judge_id: null
+            judge_id: null,
+            type: 'civil'
           })
           .select()
           .single();
@@ -388,7 +389,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: data.title,
             description: data.description,
             caseNumber: data.case_number,
-            status: data.status,
+            status: data.status as CaseStatus,
             clientId: data.client_id,
             lawyerId: data.primary_lawyer_id,
             createdAt: data.created_at,
@@ -496,7 +497,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: data.title,
             description: data.description,
             caseNumber: data.case_number,
-            status: data.status,
+            status: data.status as CaseStatus,
             clientId: data.client_id,
             lawyerId: data.primary_lawyer_id,
             createdAt: data.created_at,
@@ -907,3 +908,4 @@ export const useData = () => {
   }
   return context;
 };
+
