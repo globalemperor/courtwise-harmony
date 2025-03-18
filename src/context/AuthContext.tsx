@@ -76,37 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (error) {
             console.error('Error fetching user profile:', error);
             setUser(null);
-            toast({
-              title: 'Error fetching profile',
-              description: 'Your profile could not be loaded.',
-              variant: 'destructive',
-            });
-          } else if (profile) {
-            // Type assertion to ensure the role is treated as UserRole
-            const typedProfile = {
-              ...profile,
-              role: profile.role as UserRole
-            };
-            setUser(mapSupabaseProfileToUser(typedProfile));
-            toast({
-              title: 'Welcome back!',
-              description: `Logged in as ${profile.name}`,
-            });
-          } else {
-            console.error('No profile found after sign in, trying to create one');
-            // Try to create a profile if it doesn't exist
-            const { error: metadataError } = await supabase.auth.updateUser({
-              data: { 
-                name: session.user.email?.split('@')[0],
-                role: 'client'
-              }
-            });
             
-            if (metadataError) {
-              console.error('Error updating user metadata:', metadataError);
-            }
-            
-            // Create a profile manually
+            // Attempt to create a profile if it doesn't exist
             const { error: createError } = await supabase
               .from('profiles')
               .insert({
@@ -119,6 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               
             if (createError) {
               console.error('Error creating profile after sign in:', createError);
+              toast({
+                title: 'Error creating profile',
+                description: 'Your profile could not be created. Please try again.',
+                variant: 'destructive',
+              });
             } else {
               // Fetch the newly created profile
               const { data: newProfile } = await supabase
@@ -133,8 +109,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   role: newProfile.role as UserRole
                 };
                 setUser(mapSupabaseProfileToUser(typedNewProfile));
+                toast({
+                  title: 'Profile created',
+                  description: 'Your profile has been created successfully!',
+                });
               }
             }
+          } else if (profile) {
+            // Type assertion to ensure the role is treated as UserRole
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
+            toast({
+              title: 'Welcome back!',
+              description: `Logged in as ${profile.name}`,
+            });
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -161,9 +152,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       console.log("Login successful:", data);
-      // Role verification is handled by the onAuthStateChange listener
-      // which will fetch the user profile and set the user state
       
+      // Immediately try to fetch and set user profile
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error fetching user profile during login:', profileError);
+          
+          // Create profile if it doesn't exist
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              name: data.user.email?.split('@')[0] || 'User',
+              email: data.user.email || '',
+              role,
+              avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.email?.split('@')[0] || 'User')}&background=random`
+            });
+            
+          if (createError) {
+            console.error('Error creating profile during login:', createError);
+            toast({
+              title: 'Profile setup failed',
+              description: 'Your login was successful but profile setup failed. Please try again.',
+              variant: 'destructive',
+            });
+          } else {
+            // Fetch the newly created profile
+            const { data: newProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+              
+            if (newProfile) {
+              const typedNewProfile = {
+                ...newProfile,
+                role: newProfile.role as UserRole
+              };
+              setUser(mapSupabaseProfileToUser(typedNewProfile));
+              toast({
+                title: 'Login successful',
+                description: 'Your profile has been created.',
+              });
+            }
+          }
+        } else if (profile) {
+          // Type assertion to ensure the role is treated as UserRole
+          const typedProfile = {
+            ...profile,
+            role: profile.role as UserRole
+          };
+          setUser(mapSupabaseProfileToUser(typedProfile));
+        }
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
@@ -198,45 +245,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Signup successful:", data);
       
-      // Manually create the profile since the database trigger might not be working
+      // Always manually create the profile
       if (data.user) {
-        const { error: profileError } = await supabase
+        // Wait for a brief moment to ensure auth signup processing is complete
+        // This helps with potential race conditions
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check if profile already exists
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .insert([
-            {
+          .select('id')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (!existingProfile) {
+          // Create profile if it doesn't exist
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
               id: data.user.id,
               name,
               email,
               role,
               avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-            }
-          ]);
-        
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          toast({
-            title: 'Profile creation failed',
-            description: 'Your account was created, but profile setup failed. Please contact support.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Account created',
-            description: 'Your account has been created successfully!',
-          });
+            });
           
-          // Set the user immediately after successful signup and profile creation
-          const newUser: User = {
-            id: data.user.id,
-            name,
-            email,
-            role,
-            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-          };
-          setUser(newUser);
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            toast({
+              title: 'Profile creation failed',
+              description: 'Your account was created, but profile setup failed. Please try logging in to fix this issue.',
+              variant: 'destructive',
+            });
+            
+            // Log the user out so they can try signing in again
+            await supabase.auth.signOut();
+            setUser(null);
+            throw new Error('Profile creation failed');
+          } else {
+            toast({
+              title: 'Account created',
+              description: 'Your account and profile have been created successfully!',
+            });
+            
+            // Set the user immediately after successful signup and profile creation
+            const newUser: User = {
+              id: data.user.id,
+              name,
+              email,
+              role,
+              avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+            };
+            setUser(newUser);
+          }
+        } else {
+          // Profile already exists
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profile) {
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
+            toast({
+              title: 'Welcome back!',
+              description: `Logged in as ${profile.name}`,
+            });
+          }
         }
       }
-      
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({

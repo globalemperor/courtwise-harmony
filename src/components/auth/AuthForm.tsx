@@ -52,12 +52,26 @@ export const AuthForm = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+    
+    // Basic validation
+    if (!loginEmail.trim()) {
+      setLoginError("Email is required");
+      return;
+    }
+    
+    if (!loginPassword) {
+      setLoginError("Password is required");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
       await login(loginEmail, loginPassword, loginRole);
+      console.log("Login successful, navigating to dashboard");
       navigate("/dashboard");
     } catch (error: any) {
+      console.error("Login error in form handler:", error);
       setLoginError(error.message || "Login failed. Please check your credentials.");
       setIsLoading(false);
     }
@@ -66,32 +80,48 @@ export const AuthForm = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError("");
-    setIsLoading(true);
-
+    
     // Basic form validation
     if (!signupName.trim()) {
       setSignupError("Name is required");
-      setIsLoading(false);
+      return;
+    }
+
+    if (!signupEmail.trim()) {
+      setSignupError("Email is required");
       return;
     }
 
     if (!signupEmail.includes('@')) {
       setSignupError("Please enter a valid email address");
-      setIsLoading(false);
+      return;
+    }
+
+    if (!signupPassword) {
+      setSignupError("Password is required");
       return;
     }
 
     if (signupPassword.length < 6) {
       setSignupError("Password must be at least 6 characters");
-      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+
     try {
+      console.log("Attempting signup with:", signupName, signupEmail, signupRole);
       await signup(signupName, signupEmail, signupPassword, signupRole);
+      console.log("Signup successful, navigating to dashboard");
       navigate("/dashboard");
     } catch (error: any) {
-      setSignupError(error.message || "Signup failed. Please try again.");
+      console.error("Signup error in form handler:", error);
+      // Check for specific error messages
+      if (error.message.includes("already registered")) {
+        setSignupError("This email is already registered. Please try logging in instead.");
+      } else {
+        setSignupError(error.message || "Signup failed. Please try again.");
+      }
       setIsLoading(false);
     }
   };
