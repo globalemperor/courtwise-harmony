@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,6 @@ import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Gavel, User, UserCog, Scale, Loader2 } from "lucide-react";
 
-// Role icon mapping component
 const RoleIcon = ({ role }: { role: UserRole }) => {
   switch (role) {
     case 'client':
@@ -34,18 +32,15 @@ export const AuthForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginRole, setLoginRole] = useState<UserRole>("client");
 
-  // Signup state
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("client");
 
-  // Form errors
   const [loginError, setLoginError] = useState("");
   const [signupError, setSignupError] = useState("");
 
@@ -53,7 +48,6 @@ export const AuthForm = () => {
     e.preventDefault();
     setLoginError("");
     
-    // Basic validation
     if (!loginEmail.trim()) {
       setLoginError("Email is required");
       return;
@@ -68,11 +62,8 @@ export const AuthForm = () => {
 
     try {
       await login(loginEmail, loginPassword, loginRole);
-      console.log("Login successful, navigating to dashboard");
       navigate("/dashboard");
     } catch (error: any) {
-      console.error("Login error in form handler:", error);
-      // The error toast is already shown in the login function
       setIsLoading(false);
     }
   };
@@ -81,7 +72,6 @@ export const AuthForm = () => {
     e.preventDefault();
     setSignupError("");
     
-    // Basic form validation
     if (!signupName.trim()) {
       setSignupError("Name is required");
       return;
@@ -110,13 +100,9 @@ export const AuthForm = () => {
     setIsLoading(true);
 
     try {
-      console.log("Attempting signup with:", signupName, signupEmail, signupRole);
       await signup(signupName, signupEmail, signupPassword, signupRole);
-      console.log("Signup successful, navigating to dashboard");
       navigate("/dashboard");
     } catch (error: any) {
-      console.error("Signup error in form handler:", error);
-      // The error toast is already shown in the signup function
       setIsLoading(false);
     }
   };

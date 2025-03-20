@@ -1,9 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole, mapSupabaseProfileToUser } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
+import { User, UserRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -16,255 +14,109 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Local storage keys
+const USER_STORAGE_KEY = 'courtwise_user';
+const USERS_STORAGE_KEY = 'courtwise_users';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [session, setSession] = useState<Session | null>(null);
   const { toast } = useToast();
 
-  // Check active session and set up auth state listener
+  // Initialize from localStorage
   useEffect(() => {
-    console.log("Initializing auth state...");
-    
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("Auth state changed:", event, newSession?.user?.id);
-        setSession(newSession);
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (newSession?.user) {
-            try {
-              console.log("Getting profile for user:", newSession.user.id);
-              const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', newSession.user.id)
-                .single();
-                
-              if (error) {
-                console.error('Error fetching user profile:', error);
-                // Wait a moment and try one more time - the trigger might be delayed
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const { data: retryProfile, error: retryError } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('id', newSession.user.id)
-                  .single();
-                  
-                if (retryError) {
-                  console.error('Error on retry fetching profile:', retryError);
-                  
-                  // Create profile if it doesn't exist after retry
-                  const { error: createError } = await supabase
-                    .from('profiles')
-                    .insert({
-                      id: newSession.user.id,
-                      name: newSession.user.email?.split('@')[0] || 'User',
-                      email: newSession.user.email || '',
-                      role: 'client',
-                      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(newSession.user.email?.split('@')[0] || 'User')}&background=random`
-                    });
-                    
-                  if (createError) {
-                    console.error('Failed to create profile on auth state change:', createError);
-                    toast({
-                      title: 'Profile setup failed',
-                      description: 'Could not set up your profile. Please try logging out and in again.',
-                      variant: 'destructive',
-                    });
-                  } else {
-                    // Get the newly created profile
-                    const { data: newProfile } = await supabase
-                      .from('profiles')
-                      .select('*')
-                      .eq('id', newSession.user.id)
-                      .single();
-                      
-                    if (newProfile) {
-                      const typedProfile = {
-                        ...newProfile,
-                        role: newProfile.role as UserRole
-                      };
-                      setUser(mapSupabaseProfileToUser(typedProfile));
-                      toast({
-                        title: 'Profile created',
-                        description: 'Your profile has been created successfully!',
-                      });
-                    }
-                  }
-                } else if (retryProfile) {
-                  const typedProfile = {
-                    ...retryProfile,
-                    role: retryProfile.role as UserRole
-                  };
-                  setUser(mapSupabaseProfileToUser(typedProfile));
-                }
-              } else if (profile) {
-                const typedProfile = {
-                  ...profile,
-                  role: profile.role as UserRole
-                };
-                setUser(mapSupabaseProfileToUser(typedProfile));
-                
-                if (event === 'SIGNED_IN') {
-                  toast({
-                    title: 'Welcome back!',
-                    description: `Logged in as ${profile.name}`,
-                  });
-                }
-              }
-            } catch (error) {
-              console.error('Unexpected error processing auth state change:', error);
-            }
-          } else {
-            setUser(null);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          toast({
-            title: 'Logged out',
-            description: 'You have been successfully logged out.',
-          });
-        }
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
       }
-    );
-    
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
-      console.log("Checking for existing session:", existingSession?.user?.id);
-      setSession(existingSession);
-      
-      if (existingSession?.user) {
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', existingSession.user.id)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching user profile on init:', error);
-            setUser(null);
-          } else if (profile) {
-            console.log("Found existing profile:", profile);
-            const typedProfile = {
-              ...profile,
-              role: profile.role as UserRole
-            };
-            setUser(mapSupabaseProfileToUser(typedProfile));
-          }
-        } catch (error) {
-          console.error('Error checking session:', error);
-          setUser(null);
-        }
-      }
-      
-      setLoading(false);
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [toast]);
+    }
+    setLoading(false);
+  }, []);
+
+  // Helper to get stored users
+  const getStoredUsers = (): User[] => {
+    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+    try {
+      return storedUsers ? JSON.parse(storedUsers) : [];
+    } catch (error) {
+      console.error('Error parsing stored users:', error);
+      return [];
+    }
+  };
+
+  // Helper to save users
+  const saveUsers = (users: User[]) => {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  };
 
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-      console.log("Attempting to login:", email, role);
+      // Find user in local storage
+      const users = getStoredUsers();
+      const foundUser = users.find(u => u.email === email);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      if (!foundUser) {
+        throw new Error('User not found');
+      }
+      
+      // In a real app, we would check password hash, but for simplicity we'll skip that
+      
+      // Set the current user
+      setUser(foundUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(foundUser));
+      
+      toast({
+        title: 'Login successful',
+        description: `Welcome back, ${foundUser.name}!`,
       });
       
-      if (error) throw error;
-      
-      console.log("Login successful:", data);
-      
-      // The auth state change listener will handle setting the user
-      // We don't need to do anything else here
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: 'Login failed',
-        description: error.message || 'An error occurred during login',
+        description: error.message || 'Invalid email or password',
         variant: 'destructive',
       });
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signup = async (name: string, email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-      console.log("Attempting to signup:", name, email, role);
+      // Check if user already exists
+      const users = getStoredUsers();
+      if (users.some(u => u.email === email)) {
+        throw new Error('User already exists');
+      }
       
-      // Sign up the user with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
+      // Create new user
+      const newUser: User = {
+        id: `user-${Date.now()}`,
+        name,
         email,
-        password,
-        options: {
-          data: {
-            name,
-            role,
-          },
-        },
+        role,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+      };
+      
+      // Save to local storage
+      saveUsers([...users, newUser]);
+      
+      // Set as current user
+      setUser(newUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+      
+      toast({
+        title: 'Account created',
+        description: 'Your account has been created successfully!',
       });
       
-      if (error) throw error;
-      
-      console.log("Signup successful:", data);
-      
-      if (data.user) {
-        // Wait for trigger to create profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verify profile was created or create it manually
-        const { data: existingProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (profileError || !existingProfile) {
-          console.log("Profile not found, creating manually");
-          
-          // Create profile
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              name,
-              email,
-              role,
-              avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-            });
-            
-          if (insertError) {
-            console.error('Error creating profile after signup:', insertError);
-            toast({
-              title: 'Profile setup failed',
-              description: 'Your account was created, but profile setup failed. Please try logging in again.',
-              variant: 'destructive',
-            });
-            
-            // The auth state change listener will attempt to create a profile again
-          } else {
-            toast({
-              title: 'Account created',
-              description: 'Your account has been created successfully!',
-            });
-          }
-        } else {
-          toast({
-            title: 'Account created',
-            description: 'Your account has been created successfully!',
-          });
-        }
-      }
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({
@@ -272,23 +124,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message || 'An error occurred during signup',
         variant: 'destructive',
       });
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      // The auth state change listener will handle clearing the user
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast({
-        title: 'Logout failed',
-        description: 'An error occurred during logout',
-        variant: 'destructive',
-      });
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    toast({
+      title: 'Logged out',
+      description: 'You have been successfully logged out.',
+    });
   };
 
   return (
