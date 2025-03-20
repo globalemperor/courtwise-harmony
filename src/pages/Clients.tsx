@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,38 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { UserRound, Mail, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Case } from "@/types";
 
 const Clients = () => {
   const { users, getCasesByUser } = useData();
-  const [clientCases, setClientCases] = useState<Record<string, Case[]>>({});
-  const [loading, setLoading] = useState(true);
   
   // Get all clients
   const clients = users.filter(user => user.role === 'client');
-
-  // Fetch cases for each client on component mount
-  useEffect(() => {
-    const fetchClientCases = async () => {
-      setLoading(true);
-      const casesByClient: Record<string, Case[]> = {};
-      
-      for (const client of clients) {
-        try {
-          const cases = await getCasesByUser(client.id, 'client');
-          casesByClient[client.id] = cases;
-        } catch (error) {
-          console.error(`Error fetching cases for client ${client.id}:`, error);
-          casesByClient[client.id] = [];
-        }
-      }
-      
-      setClientCases(casesByClient);
-      setLoading(false);
-    };
-    
-    fetchClientCases();
-  }, [clients, getCasesByUser]);
 
   return (
     <div className="space-y-6">
@@ -48,13 +21,7 @@ const Clients = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {loading ? (
-          <Card className="col-span-full">
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">Loading clients...</p>
-            </CardContent>
-          </Card>
-        ) : clients.length === 0 ? (
+        {clients.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">No clients found</p>
@@ -62,7 +29,7 @@ const Clients = () => {
           </Card>
         ) : (
           clients.map(client => {
-            const clientCaseList = clientCases[client.id] || [];
+            const clientCases = getCasesByUser(client.id, 'client');
             
             return (
               <Card key={client.id}>
@@ -76,7 +43,7 @@ const Clients = () => {
                       <div>
                         <CardTitle className="text-lg">{client.name}</CardTitle>
                         <Badge variant="outline" className="mt-1">
-                          {clientCaseList.length} {clientCaseList.length === 1 ? 'case' : 'cases'}
+                          {clientCases.length} {clientCases.length === 1 ? 'case' : 'cases'}
                         </Badge>
                       </div>
                     </div>
@@ -102,9 +69,9 @@ const Clients = () => {
                     <Button variant="outline" size="sm" className="flex-1">
                       Contact
                     </Button>
-                    {clientCaseList.length > 0 && (
+                    {clientCases.length > 0 && (
                       <Button size="sm" className="flex-1" asChild>
-                        <Link to={`/cases/${clientCaseList[0].id}`}>View Case</Link>
+                        <Link to={`/cases/${clientCases[0].id}`}>View Case</Link>
                       </Button>
                     )}
                   </div>

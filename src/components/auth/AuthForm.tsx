@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gavel, User, UserCog, Scale, Loader2 } from "lucide-react";
+import { Gavel, User, UserCog, Scale } from "lucide-react";
 
+// Role icon mapping component
 const RoleIcon = ({ role }: { role: UserRole }) => {
   switch (role) {
     case 'client':
@@ -32,77 +34,47 @@ export const AuthForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginRole, setLoginRole] = useState<UserRole>("client");
 
+  // Signup state
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("client");
 
-  const [loginError, setLoginError] = useState("");
-  const [signupError, setSignupError] = useState("");
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError("");
-    
-    if (!loginEmail.trim()) {
-      setLoginError("Email is required");
-      return;
-    }
-    
-    if (!loginPassword) {
-      setLoginError("Password is required");
-      return;
-    }
-    
     setIsLoading(true);
 
     try {
       await login(loginEmail, loginPassword, loginRole);
       navigate("/dashboard");
-    } catch (error: any) {
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+    } catch (error) {
+      // Error is already handled in the login function
       setIsLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignupError("");
-    
-    if (!signupName.trim()) {
-      setSignupError("Name is required");
-      return;
-    }
-
-    if (!signupEmail.trim()) {
-      setSignupError("Email is required");
-      return;
-    }
-
-    if (!signupEmail.includes('@')) {
-      setSignupError("Please enter a valid email address");
-      return;
-    }
-
-    if (!signupPassword) {
-      setSignupError("Password is required");
-      return;
-    }
-
-    if (signupPassword.length < 6) {
-      setSignupError("Password must be at least 6 characters");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       await signup(signupName, signupEmail, signupPassword, signupRole);
       navigate("/dashboard");
-    } catch (error: any) {
+      toast({
+        title: "Account created",
+        description: "Welcome to CourtWise!",
+      });
+    } catch (error) {
+      // Error is already handled in the signup function
       setIsLoading(false);
     }
   };
@@ -123,11 +95,6 @@ export const AuthForm = () => {
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
-              {loginError && (
-                <div className="bg-destructive/15 p-3 rounded-md text-destructive text-sm">
-                  {loginError}
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -137,7 +104,6 @@ export const AuthForm = () => {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
-                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -149,7 +115,6 @@ export const AuthForm = () => {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
-                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -157,7 +122,6 @@ export const AuthForm = () => {
                 <Select
                   value={loginRole}
                   onValueChange={(value) => setLoginRole(value as UserRole)}
-                  disabled={isLoading}
                 >
                   <SelectTrigger id="login-role">
                     <SelectValue placeholder="Select role" />
@@ -193,12 +157,7 @@ export const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
-                  </>
-                ) : "Login"}
+                {isLoading ? "Logging in..." : "Login"}
               </Button>
             </CardFooter>
           </form>
@@ -214,11 +173,6 @@ export const AuthForm = () => {
           </CardHeader>
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
-              {signupError && (
-                <div className="bg-destructive/15 p-3 rounded-md text-destructive text-sm">
-                  {signupError}
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Name</Label>
                 <Input
@@ -227,7 +181,6 @@ export const AuthForm = () => {
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   required
-                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -239,7 +192,6 @@ export const AuthForm = () => {
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   required
-                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -251,18 +203,13 @@ export const AuthForm = () => {
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                   required
-                  disabled={isLoading}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-role">User Type</Label>
                 <Select
                   value={signupRole}
                   onValueChange={(value) => setSignupRole(value as UserRole)}
-                  disabled={isLoading}
                 >
                   <SelectTrigger id="signup-role">
                     <SelectValue placeholder="Select role" />
@@ -298,12 +245,7 @@ export const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : "Sign Up"}
+                {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
             </CardFooter>
           </form>

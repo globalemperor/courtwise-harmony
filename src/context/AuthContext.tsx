@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '@/types';
+import { User, UserRole, mapSupabaseProfileToUser } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -14,71 +15,98 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Local storage keys
-const USER_STORAGE_KEY = 'courtwise_user';
-const USERS_STORAGE_KEY = 'courtwise_users';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Initialize from localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    if (storedUser) {
+    // Check for active session on load
+    const checkSession = async () => {
       try {
-        setUser(JSON.parse(storedUser));
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Fetch the user profile from the profiles table
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching user profile:', error);
+            setUser(null);
+          } else if (profile) {
+            // Type assertion to ensure the role is treated as UserRole
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
+          }
+        }
       } catch (error) {
-        console.error('Error parsing stored user:', error);
+        console.error('Error checking session:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    checkSession();
+    
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          // Fetch the user profile when signed in
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching user profile:', error);
+            setUser(null);
+          } else if (profile) {
+            // Type assertion to ensure the role is treated as UserRole
+            const typedProfile = {
+              ...profile,
+              role: profile.role as UserRole
+            };
+            setUser(mapSupabaseProfileToUser(typedProfile));
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+    
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
-
-  // Helper to get stored users
-  const getStoredUsers = (): User[] => {
-    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-    try {
-      return storedUsers ? JSON.parse(storedUsers) : [];
-    } catch (error) {
-      console.error('Error parsing stored users:', error);
-      return [];
-    }
-  };
-
-  // Helper to save users
-  const saveUsers = (users: User[]) => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  };
 
   const login = async (email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-      // Find user in local storage
-      const users = getStoredUsers();
-      const foundUser = users.find(u => u.email === email);
-      
-      if (!foundUser) {
-        throw new Error('User not found');
-      }
-      
-      // In a real app, we would check password hash, but for simplicity we'll skip that
-      
-      // Set the current user
-      setUser(foundUser);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(foundUser));
-      
-      toast({
-        title: 'Login successful',
-        description: `Welcome back, ${foundUser.name}!`,
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+      
+      if (error) throw error;
+      
+      // Role verification is handled by the onAuthStateChange listener
+      // which will fetch the user profile and set the user state
       
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: 'Login failed',
-        description: error.message || 'Invalid email or password',
+        description: error.message || 'An error occurred during login',
         variant: 'destructive',
       });
       throw error;
@@ -90,32 +118,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (name: string, email: string, password: string, role: UserRole) => {
     setLoading(true);
     try {
-      // Check if user already exists
-      const users = getStoredUsers();
-      if (users.some(u => u.email === email)) {
-        throw new Error('User already exists');
-      }
-      
-      // Create new user
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        name,
+      // Sign up the user with Supabase Auth
+      const { error } = await supabase.auth.signUp({
         email,
-        role,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-      };
+        password,
+        options: {
+          data: {
+            name,
+            role,
+          },
+        },
+      });
       
-      // Save to local storage
-      saveUsers([...users, newUser]);
-      
-      // Set as current user
-      setUser(newUser);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+      if (error) throw error;
       
       toast({
         title: 'Account created',
         description: 'Your account has been created successfully!',
       });
+      
+      // The profile will be created by the database trigger
+      // The user will be set by the onAuthStateChange listener
       
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -130,13 +153,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    toast({
-      title: 'Logged out',
-      description: 'You have been successfully logged out.',
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (

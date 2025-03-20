@@ -3,45 +3,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Mock Supabase client for local development
-// We're not connecting to a real Supabase instance anymore
-const SUPABASE_URL = "https://example.com";
-const SUPABASE_PUBLISHABLE_KEY = "mock-key";
+const SUPABASE_URL = "https://yxlzodyxxkojkyvkofkd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4bHpvZHl4eGtvamt5dmtvZmtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyMDc4NzgsImV4cCI6MjA1Nzc4Mzg3OH0.6_ChgQq1ZVoiO3Cgi6YFrcM2TE6Sz_JE7yIcPIqB9vg";
 
-// Creating a mock client that won't actually connect to Supabase
-// but will satisfy the type requirements for the rest of the app
-const mockClient = {
-  auth: {
-    signInWithPassword: () => Promise.resolve({ data: null, error: null }),
-    signUp: () => Promise.resolve({ data: null, error: null }),
-    signOut: () => Promise.resolve({ error: null }),
-    getSession: () => Promise.resolve({ data: { session: null } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-  },
-  from: () => ({
-    select: () => ({
-      eq: () => ({
-        single: () => Promise.resolve({ data: null, error: null }),
-        maybeSingle: () => Promise.resolve({ data: null, error: null }),
-      }),
-      in: () => Promise.resolve({ data: null, error: null }),
-    }),
-    insert: () => ({
-      select: () => ({
-        single: () => Promise.resolve({ data: null, error: null }),
-      }),
-    }),
-    update: () => ({
-      eq: () => Promise.resolve({ data: null, error: null }),
-      select: () => ({
-        single: () => Promise.resolve({ data: null, error: null }),
-      }),
-    }),
-    delete: () => ({
-      eq: () => Promise.resolve({ data: null, error: null }),
-    }),
-  }),
-};
+// Import the supabase client like this:
+// import { supabase } from "@/integrations/supabase/client";
 
-// Export a mock supabase client that won't actually connect to Supabase
-export const supabase = mockClient as unknown as ReturnType<typeof createClient<Database>>;
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
