@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gavel, User, UserCog, Scale } from "lucide-react";
+import { Gavel, User, UserCog, Scale, Loader2 } from "lucide-react";
 
 // Role icon mapping component
 const RoleIcon = ({ role }: { role: UserRole }) => {
@@ -72,7 +72,7 @@ export const AuthForm = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login error in form handler:", error);
-      setLoginError(error.message || "Login failed. Please check your credentials.");
+      // The error toast is already shown in the login function
       setIsLoading(false);
     }
   };
@@ -116,12 +116,7 @@ export const AuthForm = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Signup error in form handler:", error);
-      // Check for specific error messages
-      if (error.message.includes("already registered")) {
-        setSignupError("This email is already registered. Please try logging in instead.");
-      } else {
-        setSignupError(error.message || "Signup failed. Please try again.");
-      }
+      // The error toast is already shown in the signup function
       setIsLoading(false);
     }
   };
@@ -156,6 +151,7 @@ export const AuthForm = () => {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -167,6 +163,7 @@ export const AuthForm = () => {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -174,6 +171,7 @@ export const AuthForm = () => {
                 <Select
                   value={loginRole}
                   onValueChange={(value) => setLoginRole(value as UserRole)}
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="login-role">
                     <SelectValue placeholder="Select role" />
@@ -209,7 +207,12 @@ export const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : "Login"}
               </Button>
             </CardFooter>
           </form>
@@ -238,6 +241,7 @@ export const AuthForm = () => {
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -249,6 +253,7 @@ export const AuthForm = () => {
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -260,6 +265,7 @@ export const AuthForm = () => {
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
                   Password must be at least 6 characters
@@ -270,6 +276,7 @@ export const AuthForm = () => {
                 <Select
                   value={signupRole}
                   onValueChange={(value) => setSignupRole(value as UserRole)}
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="signup-role">
                     <SelectValue placeholder="Select role" />
@@ -305,7 +312,12 @@ export const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Sign Up"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : "Sign Up"}
               </Button>
             </CardFooter>
           </form>
