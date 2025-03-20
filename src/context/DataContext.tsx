@@ -187,7 +187,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Case operations
   const getCaseById = (id: string) => cases.find(c => c.id === id);
   
   const getCasesByUser = (userId: string, role: UserRole) => {
