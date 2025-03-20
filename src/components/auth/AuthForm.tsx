@@ -57,7 +57,12 @@ export const AuthForm = () => {
         description: "Welcome back!",
       });
     } catch (error) {
-      // Error is already handled in the login function
+      toast({
+        title: "Login failed",
+        description: (error as Error).message || "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -74,7 +79,12 @@ export const AuthForm = () => {
         description: "Welcome to CourtWise!",
       });
     } catch (error) {
-      // Error is already handled in the signup function
+      toast({
+        title: "Signup failed",
+        description: (error as Error).message || "Please try again",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -153,6 +163,9 @@ export const AuthForm = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  For demo: Use "{loginRole}@example.com" with password "password"
+                </p>
               </div>
             </CardContent>
             <CardFooter>
