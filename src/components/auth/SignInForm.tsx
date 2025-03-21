@@ -7,13 +7,12 @@ import { UserRole } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Gavel, User, UserCog, Scale } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -137,14 +136,8 @@ export const SignInForm = ({ role }: SignInFormProps) => {
                 </FormItem>
               )}
             />
-
-            <div className="flex items-center justify-between">
-              <Link to={`/login/signup?role=${role}`} className="text-sm text-court-blue hover:underline">
-                Don't have an account? Sign up
-              </Link>
-            </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button 
               type="submit" 
               className="w-full bg-court-blue hover:bg-court-blue-dark"
@@ -152,6 +145,15 @@ export const SignInForm = ({ role }: SignInFormProps) => {
             >
               {isLoading ? "Logging in..." : "Login"}
             </Button>
+            
+            <div className="text-center w-full">
+              <p className="text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link to={`/login/signup?role=${role}`} className="text-court-blue hover:underline font-medium">
+                  Sign up as a {getRoleTitle(role)}
+                </Link>
+              </p>
+            </div>
           </CardFooter>
         </form>
       </Form>

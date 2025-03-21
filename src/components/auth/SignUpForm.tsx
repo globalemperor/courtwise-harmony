@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { UserRole } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Gavel, User, UserCog, Scale } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -16,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Role-specific form schemas
 const clientSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
@@ -77,19 +75,12 @@ const getSchemaForRole = (role: UserRole) => {
   }
 };
 
-// Role icon component
-const RoleIcon = ({ role }: { role: UserRole }) => {
+const getRoleTitle = (role: UserRole) => {
   switch (role) {
-    case 'client':
-      return <User className="h-5 w-5 mr-2 text-blue-500" />;
-    case 'lawyer':
-      return <Scale className="h-5 w-5 mr-2 text-green-500" />;
-    case 'clerk':
-      return <UserCog className="h-5 w-5 mr-2 text-purple-500" />;
-    case 'judge':
-      return <Gavel className="h-5 w-5 mr-2 text-red-500" />;
-    default:
-      return null;
+    case 'client': return "Client";
+    case 'lawyer': return "Lawyer";
+    case 'clerk': return "Clerk";
+    case 'judge': return "Judge";
   }
 };
 
@@ -111,7 +102,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
       email: "",
       password: "",
       confirmPassword: "",
-      // Role-specific fields with defaults
       barId: "",
       yearsOfExperience: "",
       specialization: "",
@@ -125,17 +115,15 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
     }
   });
 
-  // Update schema when role changes
   const onRoleChange = (newRole: UserRole) => {
     setRole(newRole);
-    form.reset(form.getValues()); // Keep current values
-    form.clearErrors(); // Clear errors since validation rules change
+    form.reset(form.getValues());
+    form.clearErrors();
   };
 
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      // Extract basic fields needed for auth
       const { name, email, password } = data;
       await signup(name, email, password, role);
       navigate("/dashboard");
@@ -159,13 +147,12 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">Create an account</CardTitle>
         <CardDescription className="text-center">
-          Enter your information to create a new {role} account
+          Enter your information to create a new {getRoleTitle(role)} account
         </CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
-            {/* Role Selection */}
             <div className="space-y-2">
               <Label>I am a</Label>
               <Select
@@ -204,7 +191,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
               </Select>
             </div>
 
-            {/* Common Fields */}
             <FormField
               control={form.control}
               name="name"
@@ -263,7 +249,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
               />
             </div>
 
-            {/* Role-specific Fields */}
             {role === 'lawyer' && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -425,7 +410,7 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
             )}
           </CardContent>
 
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button 
               type="submit" 
               className="w-full bg-court-blue hover:bg-court-blue-dark"
@@ -433,6 +418,15 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
             >
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
+            
+            <div className="text-center w-full">
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <Link to={`/login/${role}`} className="text-court-blue hover:underline font-medium">
+                  Sign in as a {getRoleTitle(role)}
+                </Link>
+              </p>
+            </div>
           </CardFooter>
         </form>
       </Form>

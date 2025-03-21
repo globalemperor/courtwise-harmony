@@ -1,14 +1,24 @@
 
-import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/context/AuthContext";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Gavel } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SignInForm } from "@/components/auth/SignInForm";
+import { SignUpForm } from "@/components/auth/SignUpForm";
+import { UserRole } from "@/types";
 
 const Login = () => {
   const { isAuthenticated, loading } = useAuth();
   const [showAnimation, setShowAnimation] = useState(false);
   const location = useLocation();
+  const { role } = useParams<{ role?: string }>();
+  const [searchParams] = useSearchParams();
+  const defaultRole = searchParams.get("role") as UserRole || "client";
+  
+  const isSignUp = location.pathname.includes("signup");
+
+  // Ensure role is a valid UserRole
+  const validRole = (role as UserRole) || defaultRole;
 
   useEffect(() => {
     setShowAnimation(true);
@@ -62,7 +72,11 @@ const Login = () => {
           <p className="text-muted-foreground">Court Case Management System</p>
         </div>
         
-        <AuthForm />
+        {isSignUp ? (
+          <SignUpForm defaultRole={validRole} />
+        ) : (
+          <SignInForm role={validRole} />
+        )}
       </div>
     </div>
   );
