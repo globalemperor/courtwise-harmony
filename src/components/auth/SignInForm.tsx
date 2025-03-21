@@ -7,12 +7,24 @@ import { UserRole } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Gavel, User, UserCog, Scale } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -20,19 +32,70 @@ const loginSchema = z.object({
 });
 
 // Role icon component
-const RoleIcon = ({ role }: { role: UserRole }) => {
+const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown?: boolean }) => {
+  const navigate = useNavigate();
+  
+  let Icon, color;
+  
   switch (role) {
     case 'client':
-      return <User className="h-10 w-10 text-blue-500" />;
+      Icon = User;
+      color = "text-blue-500";
+      break;
     case 'lawyer':
-      return <Scale className="h-10 w-10 text-green-500" />;
+      Icon = Scale;
+      color = "text-green-500";
+      break;
     case 'clerk':
-      return <UserCog className="h-10 w-10 text-purple-500" />;
+      Icon = UserCog;
+      color = "text-purple-500";
+      break;
     case 'judge':
-      return <Gavel className="h-10 w-10 text-red-500" />;
+      Icon = Gavel;
+      color = "text-red-500";
+      break;
     default:
-      return null;
+      Icon = User;
+      color = "text-blue-500";
   }
+  
+  if (!showDropdown) {
+    return <Icon className={`h-10 w-10 ${color}`} />;
+  }
+  
+  return (
+    <DropdownMenu>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <div className="cursor-pointer">
+                <Icon className={`h-10 w-10 ${color}`} />
+              </div>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Change role</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <DropdownMenuContent align="center">
+        <DropdownMenuItem onClick={() => navigate(`/login/client`)}>
+          <User className="h-4 w-4 text-blue-500 mr-2" /> Client
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/login/lawyer`)}>
+          <Scale className="h-4 w-4 text-green-500 mr-2" /> Lawyer
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/login/clerk`)}>
+          <UserCog className="h-4 w-4 text-purple-500 mr-2" /> Clerk
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/login/judge`)}>
+          <Gavel className="h-4 w-4 text-red-500 mr-2" /> Judge
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 const getRoleTitle = (role: UserRole) => {
@@ -87,7 +150,7 @@ export const SignInForm = ({ role }: SignInFormProps) => {
       <CardHeader className="space-y-2 text-center">
         <div className="flex justify-center mb-2">
           <div className="p-3 rounded-full bg-court-gray flex items-center justify-center">
-            <RoleIcon role={role} />
+            <RoleIcon role={role} showDropdown={true} />
           </div>
         </div>
         <CardTitle className="text-2xl">{getRoleTitle(role)} Login</CardTitle>
