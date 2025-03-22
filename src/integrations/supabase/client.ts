@@ -9,6 +9,7 @@ import casesData from '../../data/cases.json';
 import lawyerClerkChats from '../../data/chats_lawyer_clerk.json';
 import clientLawyerChats from '../../data/chats_client_lawyer.json';
 import clerkJudgeChats from '../../data/chats_clerk_judge.json';
+import { UserRole, CaseStatus } from '@/types';
 
 // Helper to save data to localStorage with JSON files backup
 const saveData = (key: string, data: any) => {
@@ -31,15 +32,30 @@ const getData = (key: string, defaultData: any = []) => {
   // Use default data from JSON files as fallback
   switch (key) {
     case 'courtwise_users_clerks':
-      return clerksData;
+      return clerksData.map(clerk => ({
+        ...clerk,
+        role: clerk.role as UserRole
+      }));
     case 'courtwise_users_clients':
-      return clientsData;
+      return clientsData.map(client => ({
+        ...client,
+        role: client.role as UserRole
+      }));
     case 'courtwise_users_lawyers':
-      return lawyersData;
+      return lawyersData.map(lawyer => ({
+        ...lawyer,
+        role: lawyer.role as UserRole
+      }));
     case 'courtwise_users_judges':
-      return judgesData;
+      return judgesData.map(judge => ({
+        ...judge,
+        role: judge.role as UserRole
+      }));
     case 'courtwise_cases':
-      return casesData;
+      return casesData.map(caseItem => ({
+        ...caseItem,
+        status: caseItem.status as CaseStatus
+      }));
     case 'courtwise_chats_lawyer_clerk':
       return lawyerClerkChats;
     case 'courtwise_chats_client_lawyer':
@@ -140,7 +156,8 @@ export const supabase = {
         password, // In a real app, this would be hashed
         name: email.split('@')[0],
         role,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        avatarUrl: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
       };
       
       // Save to appropriate role-based JSON
