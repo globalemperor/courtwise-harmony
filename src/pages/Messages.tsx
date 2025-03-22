@@ -8,10 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Search, PlusCircle, Send, User } from "lucide-react";
+import { Search, PlusCircle, Send, User, Info, AlertOctagon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSearchParams } from "react-router-dom";
+import { UserRole } from "@/types";
+
+// Helper function to check if communication is allowed between roles
+const canCommunicate = (senderRole: UserRole, recipientRole: UserRole): boolean => {
+  // Define allowed communication channels
+  const allowedCommunication: Record<UserRole, UserRole[]> = {
+    'client': ['lawyer'],
+    'lawyer': ['client', 'clerk', 'judge'],
+    'clerk': ['lawyer', 'judge'],
+    'judge': ['lawyer', 'clerk']
+  };
+  
+  return allowedCommunication[senderRole]?.includes(recipientRole) || false;
+};
 
 const Messages = () => {
   const { user } = useAuth();
@@ -59,20 +73,56 @@ const Messages = () => {
     )
   );
 
-  // Potential recipients (exclude self and current conversation partners)
+  // Get filtered conversation partners that the current user can communicate with
+  const getFilteredUsersByRole = (role: UserRole): string[] => {
+    if (!canCommunicate(user.role, role)) return [];
+    return users
+      .filter(u => u.role === role && u.id !== user.id)
+      .map(u => u.id);
+  };
+
+  // Get all potential users that the current user can message
+  const getAllowedUserIds = (): string[] => {
+    const allowedUsers: string[] = [];
+    
+    // Add users based on role permissions
+    if (user.role === 'client') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+    } else if (user.role === 'lawyer') {
+      allowedUsers.push(...getFilteredUsersByRole('client'));
+      allowedUsers.push(...getFilteredUsersByRole('clerk'));
+      allowedUsers.push(...getFilteredUsersByRole('judge'));
+    } else if (user.role === 'clerk') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+      allowedUsers.push(...getFilteredUsersByRole('judge'));
+    } else if (user.role === 'judge') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+      allowedUsers.push(...getFilteredUsersByRole('clerk'));
+    }
+    
+    return allowedUsers;
+  };
+
+  // Get potential recipients that the user can message
   const potentialRecipients = users.filter(
-    u => u.id !== user.id && !conversationPartners.includes(u.id)
+    u => getAllowedUserIds().includes(u.id) && !conversationPartners.includes(u.id)
   );
 
-  // If search query exists, filter both existing conversations and potential recipients
+  // Filter both existing conversations and potential recipients
   const filteredConversationPartners = searchQuery
     ? conversationPartners.filter(partnerId => {
         const partner = getUserById(partnerId);
+        // Check if the user can communicate with this role
+        if (partner && !canCommunicate(user.role, partner.role)) return false;
+        
         return partner && 
           (partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
            partner.email.toLowerCase().includes(searchQuery.toLowerCase()));
       })
-    : conversationPartners;
+    : conversationPartners.filter(partnerId => {
+        const partner = getUserById(partnerId);
+        return partner && canCommunicate(user.role, partner.role);
+      });
 
   const handleSendMessage = async () => {
     if (!messageContent.trim() || !selectedUser) {
@@ -91,6 +141,16 @@ const Messages = () => {
         toast({
           title: "Recipient not found",
           description: "The selected recipient could not be found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if communication is allowed between these roles
+      if (!canCommunicate(user.role, recipient.role)) {
+        toast({
+          title: "Communication restricted",
+          description: `${user.role} cannot send messages to ${recipient.role}`,
           variant: "destructive"
         });
         return;
@@ -122,12 +182,28 @@ const Messages = () => {
     }
   };
 
+  // Get communication instructions based on user role
+  const getCommunicationInstructions = () => {
+    switch (user.role) {
+      case 'client':
+        return "As a client, you can only communicate with lawyers assigned to your cases.";
+      case 'lawyer':
+        return "As a lawyer, you can communicate with clients, court clerks, and judges.";
+      case 'clerk':
+        return "As a court clerk, you can only communicate with lawyers and judges.";
+      case 'judge':
+        return "As a judge, you can only communicate with lawyers and court clerks.";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Messages</h1>
-          <p className="text-muted-foreground">Communicate with clients, lawyers, and court staff</p>
+          <p className="text-muted-foreground">Communicate with authorized court personnel</p>
         </div>
         
         <Button onClick={() => setShowNewMessageForm(true)}>
@@ -135,6 +211,16 @@ const Messages = () => {
           New Message
         </Button>
       </div>
+
+      {/* Role-based communication instructions */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="py-4 flex items-start space-x-3">
+          <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm text-blue-800">{getCommunicationInstructions()}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
@@ -157,6 +243,9 @@ const Messages = () => {
                   {filteredConversationPartners.map(partnerId => {
                     const partner = getUserById(partnerId);
                     if (!partner) return null;
+                    
+                    // Skip if user cannot communicate with this partner's role
+                    if (!canCommunicate(user.role, partner.role)) return null;
                     
                     // Get last message with this partner
                     const lastMessage = userMessages.find(
@@ -218,7 +307,7 @@ const Messages = () => {
             <Card>
               <CardHeader>
                 <CardTitle>New Message</CardTitle>
-                <CardDescription>Send a message to a user</CardDescription>
+                <CardDescription>Send a message to an authorized user</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -232,14 +321,15 @@ const Messages = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {/* Show existing conversation partners first */}
-                      {conversationPartners.length > 0 && (
+                      {filteredConversationPartners.length > 0 && (
                         <>
                           <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
                             Recent Conversations
                           </div>
-                          {conversationPartners.map(partnerId => {
+                          {filteredConversationPartners.map(partnerId => {
                             const partner = getUserById(partnerId);
-                            if (!partner) return null;
+                            if (!partner || !canCommunicate(user.role, partner.role)) return null;
+                            
                             return (
                               <SelectItem key={`existing-${partner.id}`} value={partner.id}>
                                 <div className="flex items-center">
@@ -310,6 +400,7 @@ const Messages = () => {
           ) : selectedUser ? (
             <MessageConversation 
               userId={user.id}
+              userRole={user.role}
               partnerId={selectedUser}
               caseId={selectedCaseId}
               onSendMessage={handleSendMessage}
@@ -340,6 +431,7 @@ const Messages = () => {
 
 const MessageConversation = ({ 
   userId, 
+  userRole,
   partnerId, 
   caseId,
   onSendMessage,
@@ -347,6 +439,7 @@ const MessageConversation = ({
   setMessageContent
 }: { 
   userId: string, 
+  userRole: UserRole,
   partnerId: string,
   caseId: string | null,
   onSendMessage: () => void,
@@ -357,6 +450,9 @@ const MessageConversation = ({
   const partner = getUserById(partnerId);
   
   if (!partner) return null;
+  
+  // Check if communication is allowed
+  const isCommunicationAllowed = canCommunicate(userRole, partner.role);
   
   // Get all messages between these two users
   const conversation = messages
@@ -389,6 +485,18 @@ const MessageConversation = ({
       </CardHeader>
       
       <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+        {!isCommunicationAllowed && (
+          <div className="flex justify-center my-4">
+            <div className="bg-red-50 text-red-800 px-4 py-3 rounded-md flex items-center space-x-2 max-w-md">
+              <AlertOctagon className="h-5 w-5 text-red-600" />
+              <p className="text-sm">
+                Direct communication between {userRole} and {partner.role} is restricted. 
+                Messages in this conversation are for record purposes only.
+              </p>
+            </div>
+          </div>
+        )}
+        
         {conversation.length > 0 ? (
           conversation.map(msg => {
             const isIncoming = msg.senderId === partnerId;
@@ -427,13 +535,21 @@ const MessageConversation = ({
       <CardFooter className="border-t p-4">
         <div className="flex w-full space-x-2">
           <Textarea 
-            placeholder="Type a message..." 
+            placeholder={isCommunicationAllowed 
+              ? "Type a message..." 
+              : "Direct messaging is restricted"
+            }
             className="min-h-[60px] flex-1"
             value={messageContent}
             onChange={(e) => setMessageContent(e.target.value)}
             onKeyDown={handleKeyPress}
+            disabled={!isCommunicationAllowed}
           />
-          <Button onClick={onSendMessage} className="self-end">
+          <Button 
+            onClick={onSendMessage} 
+            className="self-end"
+            disabled={!isCommunicationAllowed}
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>

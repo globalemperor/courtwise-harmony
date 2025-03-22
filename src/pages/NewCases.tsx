@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, UserPlus, Search, Calendar, FileText, Gavel } from "lucide-react";
+import { Check, UserPlus, Search, Calendar, FileText, Gavel, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { User } from "@/types";
 
 // Mock new case data
 const MOCK_NEW_CASES = [
@@ -20,9 +21,12 @@ const MOCK_NEW_CASES = [
     description: "Custody dispute for 2 children, ages 5 and 7",
     caseType: "Family",
     clientName: "Maria Thompson",
+    clientId: "5",
     clientAvatar: "https://ui-avatars.com/api/?name=Maria+Thompson&background=random",
     submittedDate: "2023-06-22T10:30:00Z",
-    status: "pending"
+    status: "pending",
+    defendantName: "John Thompson",
+    defendantId: null
   },
   {
     id: "2",
@@ -30,9 +34,12 @@ const MOCK_NEW_CASES = [
     description: "Contract dispute over incomplete construction work",
     caseType: "Civil",
     clientName: "Robert Black",
+    clientId: "6",
     clientAvatar: "https://ui-avatars.com/api/?name=Robert+Black&background=random",
     submittedDate: "2023-06-21T15:45:00Z",
-    status: "pending"
+    status: "pending",
+    defendantName: "Smith Construction LLC",
+    defendantId: null
   },
   {
     id: "3",
@@ -40,21 +47,97 @@ const MOCK_NEW_CASES = [
     description: "Contesting a speeding ticket with radar evidence",
     caseType: "Traffic",
     clientName: "Carlos Martinez",
+    clientId: "5",
     clientAvatar: "https://ui-avatars.com/api/?name=Carlos+Martinez&background=random",
     submittedDate: "2023-06-20T09:15:00Z",
-    status: "pending"
+    status: "pending",
+    defendantName: "State",
+    defendantId: null
   }
 ];
 
 const NewCases = () => {
   const [newCases, setNewCases] = useState(MOCK_NEW_CASES);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getUsersByRole } = useData();
+  const { getUsersByRole, sendMessage } = useData();
   const { toast } = useToast();
   
-  // Get all judges
+  // Get all judges and lawyers
   const judges = getUsersByRole('judge');
+  const lawyers = getUsersByRole('lawyer');
   
+  // Track selected values for each case
+  const [selectedValues, setSelectedValues] = useState<Record<string, {
+    judgeId: string;
+    prosecutorId: string;
+    defenseId: string;
+    date: string;
+    time: string;
+    room: string;
+  }>>({});
+
+  // Track booked slots to prevent conflicts
+  const [bookedSlots, setBookedSlots] = useState<{
+    judges: Record<string, string[]>,
+    lawyers: Record<string, string[]>,
+    rooms: Record<string, string[]>,
+    clients: Record<string, string[]>
+  }>({
+    judges: {},
+    lawyers: {},
+    rooms: {},
+    clients: {}
+  });
+
+  // Initialize selected values for each case
+  useEffect(() => {
+    const initialValues: Record<string, any> = {};
+    newCases.forEach(c => {
+      initialValues[c.id] = {
+        judgeId: "",
+        prosecutorId: "",
+        defenseId: "",
+        date: "",
+        time: "",
+        room: ""
+      };
+    });
+    setSelectedValues(initialValues);
+  }, [newCases]);
+
+  // Helper to format date-time string
+  const formatDateTime = (date: string, time: string) => {
+    if (!date || !time) return null;
+    return `${date}T${time}`;
+  };
+
+  // Check if a slot is booked
+  const isSlotBooked = (caseId: string, slotType: 'judges' | 'lawyers' | 'rooms' | 'clients', id: string, dateTime: string | null) => {
+    if (!dateTime) return false;
+    
+    // Don't check conflicts for the current case
+    const slots = Object.entries(bookedSlots[slotType]).filter(([bookedId]) => bookedId !== id);
+    
+    for (const [bookedId, bookedTimes] of slots) {
+      if (bookedTimes.includes(dateTime)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Update selected values
+  const handleSelectChange = (caseId: string, field: string, value: string) => {
+    setSelectedValues(prev => ({
+      ...prev,
+      [caseId]: {
+        ...prev[caseId],
+        [field]: value
+      }
+    }));
+  };
+
   // Filter cases based on search query
   const filteredCases = newCases.filter(c => 
     c.status === "pending" && 
@@ -62,16 +145,169 @@ const NewCases = () => {
      c.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleProcessCase = (caseId: string) => {
+  const handleProcessCase = async (caseId: string) => {
+    const caseData = newCases.find(c => c.id === caseId);
+    const selections = selectedValues[caseId];
+    
+    // Validate all required fields are filled
+    if (!selections.judgeId || !selections.prosecutorId || !selections.defenseId || 
+        !selections.date || !selections.time || !selections.room) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields before processing the case",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Format date and time for checking conflicts
+    const dateTime = formatDateTime(selections.date, selections.time);
+    
+    // Check for conflicts
+    if (dateTime) {
+      // Check judge conflict
+      if (isSlotBooked(caseId, 'judges', selections.judgeId, dateTime)) {
+        toast({
+          title: "Schedule conflict",
+          description: "The selected judge is already assigned to another case at this time",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check prosecutor lawyer conflict
+      if (isSlotBooked(caseId, 'lawyers', selections.prosecutorId, dateTime)) {
+        toast({
+          title: "Schedule conflict",
+          description: "The selected prosecutor is already assigned to another case at this time",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check defense lawyer conflict
+      if (isSlotBooked(caseId, 'lawyers', selections.defenseId, dateTime)) {
+        toast({
+          title: "Schedule conflict",
+          description: "The selected defense attorney is already assigned to another case at this time",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check room conflict
+      if (isSlotBooked(caseId, 'rooms', selections.room, dateTime)) {
+        toast({
+          title: "Schedule conflict",
+          description: "The selected courtroom is already booked at this time",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check client conflict (if client has another case at the same time)
+      if (caseData && isSlotBooked(caseId, 'clients', caseData.clientId, dateTime)) {
+        toast({
+          title: "Schedule conflict",
+          description: "The client is already scheduled for another case at this time",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // If no conflicts, update booked slots
+      setBookedSlots(prev => {
+        const newBookedSlots = { ...prev };
+        
+        // Add judge booking
+        if (!newBookedSlots.judges[selections.judgeId]) {
+          newBookedSlots.judges[selections.judgeId] = [];
+        }
+        newBookedSlots.judges[selections.judgeId].push(dateTime);
+        
+        // Add prosecutor booking
+        if (!newBookedSlots.lawyers[selections.prosecutorId]) {
+          newBookedSlots.lawyers[selections.prosecutorId] = [];
+        }
+        newBookedSlots.lawyers[selections.prosecutorId].push(dateTime);
+        
+        // Add defense booking
+        if (!newBookedSlots.lawyers[selections.defenseId]) {
+          newBookedSlots.lawyers[selections.defenseId] = [];
+        }
+        newBookedSlots.lawyers[selections.defenseId].push(dateTime);
+        
+        // Add room booking
+        if (!newBookedSlots.rooms[selections.room]) {
+          newBookedSlots.rooms[selections.room] = [];
+        }
+        newBookedSlots.rooms[selections.room].push(dateTime);
+        
+        // Add client booking
+        if (caseData) {
+          if (!newBookedSlots.clients[caseData.clientId]) {
+            newBookedSlots.clients[caseData.clientId] = [];
+          }
+          newBookedSlots.clients[caseData.clientId].push(dateTime);
+        }
+        
+        return newBookedSlots;
+      });
+    }
+
+    // Update case status
     setNewCases(prev => 
       prev.map(c => 
         c.id === caseId ? { ...c, status: "processed" } : c
       )
     );
     
+    // Send notifications to all parties involved
+    try {
+      // Get user objects
+      const judge = judges.find(j => j.id === selections.judgeId);
+      const prosecutor = lawyers.find(l => l.id === selections.prosecutorId);
+      const defense = lawyers.find(l => l.id === selections.defenseId);
+      
+      if (judge) {
+        await sendMessage({
+          content: `You have been assigned to case: ${caseData?.title}. Hearing scheduled for ${selections.date} at ${selections.time} in Room ${selections.room}.`,
+          senderId: "system",
+          senderRole: "clerk",
+          recipientId: judge.id,
+          recipientRole: "judge",
+          caseId: caseId
+        });
+      }
+      
+      if (prosecutor) {
+        await sendMessage({
+          content: `You have been assigned as prosecutor for case: ${caseData?.title}. Hearing scheduled for ${selections.date} at ${selections.time} in Room ${selections.room}.`,
+          senderId: "system",
+          senderRole: "clerk",
+          recipientId: prosecutor.id,
+          recipientRole: "lawyer",
+          caseId: caseId
+        });
+      }
+      
+      if (defense) {
+        await sendMessage({
+          content: `You have been assigned as defense attorney for case: ${caseData?.title}. Hearing scheduled for ${selections.date} at ${selections.time} in Room ${selections.room}.`,
+          senderId: "system",
+          senderRole: "clerk",
+          recipientId: defense.id,
+          recipientRole: "lawyer",
+          caseId: caseId
+        });
+      }
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+    }
+    
     toast({
       title: "Case processed",
-      description: "The case has been assigned and scheduled.",
+      description: "The case has been assigned and scheduled successfully.",
     });
   };
 
@@ -122,8 +358,11 @@ const NewCases = () => {
                             <AvatarFallback>{caseItem.clientName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <p className="text-sm text-muted-foreground">
-                            {caseItem.clientName}
+                            {caseItem.clientName} (Client)
                           </p>
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          Defendant: {caseItem.defendantName}
                         </div>
                       </div>
                       <Badge>{caseItem.caseType}</Badge>
@@ -136,8 +375,11 @@ const NewCases = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor={`judge-${caseItem.id}`}>Assign Judge</Label>
-                          <Select>
+                          <Label htmlFor={`judge-${caseItem.id}`}>Assign Judge <span className="text-red-500">*</span></Label>
+                          <Select 
+                            value={selectedValues[caseItem.id]?.judgeId || ""}
+                            onValueChange={(value) => handleSelectChange(caseItem.id, 'judgeId', value)}
+                          >
                             <SelectTrigger id={`judge-${caseItem.id}`}>
                               <SelectValue placeholder="Select a judge" />
                             </SelectTrigger>
@@ -152,38 +394,147 @@ const NewCases = () => {
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor={`date-${caseItem.id}`}>Initial Hearing Date</Label>
-                          <Input
-                            id={`date-${caseItem.id}`}
-                            type="date"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor={`time-${caseItem.id}`}>Hearing Time</Label>
-                          <Input
-                            id={`time-${caseItem.id}`}
-                            type="time"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor={`room-${caseItem.id}`}>Court Room</Label>
-                          <Select>
-                            <SelectTrigger id={`room-${caseItem.id}`}>
-                              <SelectValue placeholder="Select a room" />
+                          <Label htmlFor={`prosecutor-${caseItem.id}`}>Assign Prosecutor <span className="text-red-500">*</span></Label>
+                          <Select
+                            value={selectedValues[caseItem.id]?.prosecutorId || ""}
+                            onValueChange={(value) => handleSelectChange(caseItem.id, 'prosecutorId', value)}
+                          >
+                            <SelectTrigger id={`prosecutor-${caseItem.id}`}>
+                              <SelectValue placeholder="Select prosecutor" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="room101">Room 101</SelectItem>
-                              <SelectItem value="room201">Room 201</SelectItem>
-                              <SelectItem value="room302">Room 302</SelectItem>
-                              <SelectItem value="room405">Room 405</SelectItem>
+                              {lawyers.map(lawyer => (
+                                <SelectItem 
+                                  key={lawyer.id} 
+                                  value={lawyer.id}
+                                  disabled={lawyer.id === selectedValues[caseItem.id]?.defenseId}
+                                >
+                                  {lawyer.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`defense-${caseItem.id}`}>Assign Defense Attorney <span className="text-red-500">*</span></Label>
+                        <Select
+                          value={selectedValues[caseItem.id]?.defenseId || ""}
+                          onValueChange={(value) => handleSelectChange(caseItem.id, 'defenseId', value)}
+                        >
+                          <SelectTrigger id={`defense-${caseItem.id}`}>
+                            <SelectValue placeholder="Select defense attorney" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {lawyers.map(lawyer => (
+                              <SelectItem 
+                                key={lawyer.id} 
+                                value={lawyer.id}
+                                disabled={lawyer.id === selectedValues[caseItem.id]?.prosecutorId}
+                              >
+                                {lawyer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`date-${caseItem.id}`}>Initial Hearing Date <span className="text-red-500">*</span></Label>
+                          <Input
+                            id={`date-${caseItem.id}`}
+                            type="date"
+                            value={selectedValues[caseItem.id]?.date || ""}
+                            onChange={(e) => handleSelectChange(caseItem.id, 'date', e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor={`time-${caseItem.id}`}>Hearing Time <span className="text-red-500">*</span></Label>
+                          <Input
+                            id={`time-${caseItem.id}`}
+                            type="time"
+                            value={selectedValues[caseItem.id]?.time || ""}
+                            onChange={(e) => handleSelectChange(caseItem.id, 'time', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`room-${caseItem.id}`}>Court Room <span className="text-red-500">*</span></Label>
+                        <Select
+                          value={selectedValues[caseItem.id]?.room || ""}
+                          onValueChange={(value) => handleSelectChange(caseItem.id, 'room', value)}
+                        >
+                          <SelectTrigger id={`room-${caseItem.id}`}>
+                            <SelectValue placeholder="Select a room" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="room101">Room 101</SelectItem>
+                            <SelectItem value="room201">Room 201</SelectItem>
+                            <SelectItem value="room302">Room 302</SelectItem>
+                            <SelectItem value="room405">Room 405</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Conflict warnings */}
+                      {selectedValues[caseItem.id]?.date && selectedValues[caseItem.id]?.time && (
+                        <div className="text-xs space-y-1">
+                          <p className="font-medium">Availability check:</p>
+                          <ul className="space-y-1">
+                            {selectedValues[caseItem.id]?.judgeId && isSlotBooked(
+                              caseItem.id, 
+                              'judges', 
+                              selectedValues[caseItem.id]?.judgeId, 
+                              formatDateTime(selectedValues[caseItem.id]?.date, selectedValues[caseItem.id]?.time)
+                            ) && (
+                              <li className="flex items-center text-red-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Judge is already booked at this time
+                              </li>
+                            )}
+                            
+                            {selectedValues[caseItem.id]?.prosecutorId && isSlotBooked(
+                              caseItem.id, 
+                              'lawyers', 
+                              selectedValues[caseItem.id]?.prosecutorId, 
+                              formatDateTime(selectedValues[caseItem.id]?.date, selectedValues[caseItem.id]?.time)
+                            ) && (
+                              <li className="flex items-center text-red-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Prosecutor is already booked at this time
+                              </li>
+                            )}
+                            
+                            {selectedValues[caseItem.id]?.defenseId && isSlotBooked(
+                              caseItem.id, 
+                              'lawyers', 
+                              selectedValues[caseItem.id]?.defenseId, 
+                              formatDateTime(selectedValues[caseItem.id]?.date, selectedValues[caseItem.id]?.time)
+                            ) && (
+                              <li className="flex items-center text-red-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Defense attorney is already booked at this time
+                              </li>
+                            )}
+                            
+                            {selectedValues[caseItem.id]?.room && isSlotBooked(
+                              caseItem.id, 
+                              'rooms', 
+                              selectedValues[caseItem.id]?.room, 
+                              formatDateTime(selectedValues[caseItem.id]?.date, selectedValues[caseItem.id]?.time)
+                            ) && (
+                              <li className="flex items-center text-red-500">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Room is already booked at this time
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                   

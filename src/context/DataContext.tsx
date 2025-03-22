@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Case, Message, Hearing, Evidence, User, UserRole } from '@/types';
 import { useAuth } from './AuthContext';
@@ -36,6 +37,8 @@ interface DataContextType {
   // Case request operations
   acceptCaseRequest: (requestId: string) => Promise<void>;
   rejectCaseRequest: (requestId: string) => Promise<void>;
+  createCaseRequest: (request: {clientId: string, caseTitle: string, description: string, lawyerId: string}) => Promise<any>;
+  getCaseRequestsByUser: (userId: string, role: UserRole) => any[];
   
   // Data operations
   clearAllData: () => void;
@@ -203,6 +206,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  // Enhanced createCase for the new workflow
   const createCase = async (newCase: Omit<Case, 'id' | 'createdAt' | 'updatedAt'>) => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -215,6 +219,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     setCases(prev => [...prev, caseToAdd]);
+    
+    // Notify the clerk about the new case
+    if (user && user.role === 'lawyer' && newCase.clientId) {
+      // Get a clerk to notify - in a real app, you'd have a more sophisticated way to select the clerk
+      const clerks = getUsersByRole('clerk');
+      if (clerks.length > 0) {
+        // For demo, notify the first clerk
+        const clerkToNotify = clerks[0];
+        
+        // Send notification message
+        await sendMessage({
+          content: `A new case "${newCase.title}" has been filed and needs your review. Please assign a judge and schedule a hearing.`,
+          senderId: user.id,
+          senderRole: 'lawyer',
+          recipientId: clerkToNotify.id,
+          recipientRole: 'clerk',
+          caseId: caseToAdd.id
+        });
+      }
+    }
+    
     return caseToAdd;
   };
   
@@ -266,6 +291,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     setHearings(prev => [...prev, newHearing]);
+    
+    // Notify relevant parties about the hearing
+    const relevantCase = getCaseById(hearing.caseId);
+    if (relevantCase) {
+      const client = getUserById(relevantCase.clientId);
+      const lawyer = relevantCase.lawyerId ? getUserById(relevantCase.lawyerId) : null;
+      
+      // Notify the lawyer
+      if (lawyer) {
+        await sendMessage({
+          content: `A hearing for case "${relevantCase.title}" has been scheduled on ${hearing.date} at ${hearing.time} in ${hearing.location}.`,
+          senderId: "system",
+          senderRole: "clerk",
+          recipientId: lawyer.id,
+          recipientRole: "lawyer",
+          caseId: hearing.caseId
+        });
+      }
+      
+      // The lawyer will communicate with the client
+      if (lawyer && client) {
+        await sendMessage({
+          content: `A hearing for your case "${relevantCase.title}" has been scheduled on ${hearing.date} at ${hearing.time} in ${hearing.location}. I'll represent you in court.`,
+          senderId: lawyer.id,
+          senderRole: "lawyer",
+          recipientId: client.id,
+          recipientRole: "client",
+          caseId: hearing.caseId
+        });
+      }
+    }
+    
     return newHearing;
   };
   
@@ -294,6 +351,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     setEvidences(prev => [...prev, newEvidence]);
+    
+    // Notify the judge if this is added to a case
+    const relevantCase = getCaseById(evidence.caseId);
+    if (relevantCase && relevantCase.judgeName) {
+      // Find the judge
+      const judges = getUsersByRole('judge');
+      const judge = judges.length > 0 ? judges[0] : null;
+      
+      if (judge && user && user.role === 'lawyer') {
+        await sendMessage({
+          content: `New evidence "${evidence.title}" has been submitted for case "${relevantCase.title}". Description: ${evidence.description}`,
+          senderId: user.id,
+          senderRole: "lawyer",
+          recipientId: judge.id,
+          recipientRole: "judge",
+          caseId: evidence.caseId
+        });
+      }
+    }
+    
     return newEvidence;
   };
   
@@ -302,6 +379,54 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const getUserById = (id: string) => users.find(u => u.id === id);
 
+  // New function for case requests (client to lawyer)
+  const createCaseRequest = async (request: {
+    clientId: string, 
+    caseTitle: string, 
+    description: string, 
+    lawyerId: string
+  }) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const newRequest = {
+      id: `${Date.now()}`,
+      ...request,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    setCaseRequests(prev => [...prev, newRequest]);
+    
+    // Notify the lawyer
+    const client = getUserById(request.clientId);
+    const lawyer = getUserById(request.lawyerId);
+    
+    if (client && lawyer) {
+      await sendMessage({
+        content: `${client.name} has requested your legal representation for "${request.caseTitle}": ${request.description}. Please review this request.`,
+        senderId: client.id,
+        senderRole: "client",
+        recipientId: lawyer.id,
+        recipientRole: "lawyer"
+      });
+    }
+    
+    return newRequest;
+  };
+  
+  // Get case requests for a specific user
+  const getCaseRequestsByUser = (userId: string, role: UserRole) => {
+    switch (role) {
+      case 'client':
+        return caseRequests.filter(r => r.clientId === userId);
+      case 'lawyer':
+        return caseRequests.filter(r => r.lawyerId === userId);
+      default:
+        return [];
+    }
+  };
+  
   // Case request operations - FIXED to properly create the case
   const acceptCaseRequest = async (requestId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -330,16 +455,46 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       // Actually create the case and add it to the list
-      await createCase(newCase);
+      const createdCase = await createCase(newCase);
+      
+      // Notify the client
+      const client = getUserById(request.clientId);
+      if (client) {
+        await sendMessage({
+          content: `I've accepted your case "${request.caseTitle}". I will represent you in this matter. Case #${createdCase.caseNumber} has been filed.`,
+          senderId: user.id,
+          senderRole: "lawyer",
+          recipientId: client.id,
+          recipientRole: "client",
+          caseId: createdCase.id
+        });
+      }
     }
   };
   
   const rejectCaseRequest = async (requestId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
+    const request = caseRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
     setCaseRequests(prev => 
       prev.map(r => r.id === requestId ? { ...r, status: "rejected" } : r)
     );
+    
+    // Notify the client
+    if (user && user.role === 'lawyer') {
+      const client = getUserById(request.clientId);
+      if (client) {
+        await sendMessage({
+          content: `I'm unable to accept your case "${request.caseTitle}" at this time. I recommend seeking representation from another attorney.`,
+          senderId: user.id,
+          senderRole: "lawyer",
+          recipientId: client.id,
+          recipientRole: "client"
+        });
+      }
+    }
   };
   
   // Utility to clear all data (for testing)
@@ -387,6 +542,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getUserById,
         acceptCaseRequest,
         rejectCaseRequest,
+        createCaseRequest,
+        getCaseRequestsByUser,
         clearAllData,
         loading,
         refetch
