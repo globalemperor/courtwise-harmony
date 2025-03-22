@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { Gavel, User, UserCog, Scale } from "lucide-react";
+import { Gavel, User, UserCog, Scale, PenLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -61,8 +61,11 @@ const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <div className="cursor-pointer">
+              <div className="cursor-pointer relative group">
                 <Icon className={`h-10 w-10 ${color}`} />
+                <div className="absolute -right-1 -bottom-1 bg-gray-100 rounded-full p-0.5 border border-gray-200 shadow-sm group-hover:bg-gray-200 transition-colors">
+                  <PenLine className="h-3.5 w-3.5 text-gray-600" />
+                </div>
               </div>
             </DropdownMenuTrigger>
           </TooltipTrigger>

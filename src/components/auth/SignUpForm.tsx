@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,9 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
-import { Gavel, User, UserCog, Scale } from "lucide-react";
+import { Gavel, User, UserCog, Scale, PenLine } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -20,8 +20,6 @@ const clientSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
-  caseType: z.string().optional(),
-  additionalInfo: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -110,8 +108,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
       chamberNumber: "",
       courtDistrict: "",
       yearsOnBench: "",
-      caseType: "",
-      additionalInfo: ""
     }
   });
 
@@ -137,7 +133,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
         description: (error as Error).message || "Please try again",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -369,38 +364,6 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
                       <FormLabel>Court District</FormLabel>
                       <FormControl>
                         <Input placeholder="Southern District" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {role === 'client' && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="caseType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type of Case</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Family Law, Property Dispute, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="additionalInfo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Information</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Any additional details about your case or requirements" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

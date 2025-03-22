@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Gavel, User, UserCog, Scale } from "lucide-react";
+import { Gavel, User, UserCog, Scale, PenLine } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -69,8 +69,11 @@ const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <div className="cursor-pointer">
+              <div className="cursor-pointer relative group">
                 <Icon className={`h-10 w-10 ${color}`} />
+                <div className="absolute -right-1 -bottom-1 bg-gray-100 rounded-full p-0.5 border border-gray-200 shadow-sm group-hover:bg-gray-200 transition-colors">
+                  <PenLine className="h-3.5 w-3.5 text-gray-600" />
+                </div>
               </div>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -140,7 +143,7 @@ export const SignInForm = ({ role }: SignInFormProps) => {
         description: (error as Error).message || "Invalid credentials",
         variant: "destructive",
       });
-    } finally {
+      // Redirect to main page on error to prevent getting stuck
       setIsLoading(false);
     }
   };
