@@ -1,8 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { UserRole } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -132,20 +130,14 @@ export const SignInForm = ({ role }: SignInFormProps) => {
     setIsLoading(true);
     try {
       await login(data.email, data.password, role);
-      navigate("/dashboard");
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: (error as Error).message || "Invalid credentials",
-        variant: "destructive",
-      });
-      // Redirect to main page on error to prevent getting stuck
+      console.error("Login error:", error);
       setIsLoading(false);
     }
+  };
+
+  const getSuggestionMessage = () => {
+    return `For demo: Use "${role}@example.com" with password "password"`;
   };
 
   return (
@@ -197,7 +189,7 @@ export const SignInForm = ({ role }: SignInFormProps) => {
                   </FormControl>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground mt-1">
-                    For demo: Use "{role}@example.com" with password "password"
+                    {getSuggestionMessage()}
                   </p>
                 </FormItem>
               )}

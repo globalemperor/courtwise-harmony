@@ -8,8 +8,13 @@ import {
 } from "@/components/ui/card";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
-import { cn } from "@/lib/utils";
-import { Calendar, ClipboardCheck, Clock, FileText } from "lucide-react";
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { FileText } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// Register ChartJS components
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export function DashboardStats() {
   const { user } = useAuth();
@@ -41,60 +46,92 @@ export function DashboardStats() {
   
   const pendingActions = Math.floor(Math.random() * 5); // Mock data
 
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <StatsCard
-        title="Active Cases"
-        value={activeCases}
-        description="Currently active cases"
-        icon={FileText}
-        color="bg-blue-100 text-blue-700"
-      />
-      <StatsCard
-        title="Total Cases"
-        value={totalCases}
-        description="All-time cases"
-        icon={ClipboardCheck}
-        color="bg-green-100 text-green-700"
-      />
-      <StatsCard
-        title="Upcoming Hearings"
-        value={upcomingHearings}
-        description="Scheduled in next 30 days"
-        icon={Calendar}
-        color="bg-amber-100 text-amber-700"
-      />
-      <StatsCard
-        title="Pending Actions"
-        value={pendingActions}
-        description="Require your attention"
-        icon={Clock}
-        color="bg-red-100 text-red-700"
-      />
-    </div>
-  );
-}
+  // Data for doughnut chart
+  const chartData = {
+    labels: ['Active Cases', 'Closed Cases', 'Upcoming Hearings', 'Pending Actions'],
+    datasets: [
+      {
+        data: [activeCases, totalCases - activeCases, upcomingHearings, pendingActions],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)', // blue
+          'rgba(16, 185, 129, 0.8)', // green
+          'rgba(245, 158, 11, 0.8)', // amber
+          'rgba(239, 68, 68, 0.8)',  // red
+        ],
+        borderColor: [
+          'rgba(59, 130, 246, 1)',
+          'rgba(16, 185, 129, 1)',
+          'rgba(245, 158, 11, 1)',
+          'rgba(239, 68, 68, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
 
-interface StatsCardProps {
-  title: string;
-  value: number;
-  description: string;
-  icon: React.ElementType;
-  color: string;
-}
+  const options = {
+    plugins: {
+      legend: {
+        position: 'right' as const,
+      },
+    },
+    cutout: '65%',
+    responsive: true,
+    maintainAspectRatio: false,
+  };
 
-function StatsCard({ title, value, description, icon: Icon, color }: StatsCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className={cn("p-2 rounded-full", color)}>
-          <Icon className="h-4 w-4" />
+    <Card className="col-span-1">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl">Case Summary</CardTitle>
+            <CardDescription>Overview of your current workload</CardDescription>
+          </div>
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={user.avatarUrl} alt={user.name} />
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {user.name.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-48">
+            <Doughnut data={chartData} options={options} />
+          </div>
+          <div className="flex flex-col justify-center space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-4 w-4 rounded-full bg-blue-500 mr-2"></div>
+                <span>Active Cases</span>
+              </div>
+              <span className="font-bold">{activeCases}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-4 w-4 rounded-full bg-green-500 mr-2"></div>
+                <span>Closed Cases</span>
+              </div>
+              <span className="font-bold">{totalCases - activeCases}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-4 w-4 rounded-full bg-amber-500 mr-2"></div>
+                <span>Upcoming Hearings</span>
+              </div>
+              <span className="font-bold">{upcomingHearings}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-4 w-4 rounded-full bg-red-500 mr-2"></div>
+                <span>Pending Actions</span>
+              </div>
+              <span className="font-bold">{pendingActions}</span>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

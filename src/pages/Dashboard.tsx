@@ -1,8 +1,4 @@
-
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
-import { RecentCases } from "@/components/dashboard/RecentCases";
-import { UpcomingHearings } from "@/components/dashboard/UpcomingHearings";
-import { RecentMessages } from "@/components/dashboard/RecentMessages";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -19,9 +15,8 @@ import {
   MessageSquare,
   ClipboardCheck
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -287,12 +282,6 @@ const Dashboard = () => {
       {renderRoleSpecificContent()}
 
       <DashboardStats />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <RecentCases />
-        <UpcomingHearings />
-        <RecentMessages />
-      </div>
     </div>
   );
 };
