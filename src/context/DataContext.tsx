@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Case, Message, Hearing, Evidence, User, UserRole } from '@/types';
+import { Case, Message, Hearing, Evidence, User, UserRole, CaseStatus } from '@/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -55,33 +54,59 @@ interface DataContextType {
   refetch: () => void;
 }
 
+// Ensure data from JSON files conforms to the expected types
+const typedClerksData = clerksData.map(clerk => ({
+  ...clerk,
+  role: clerk.role as UserRole
+}));
+
+const typedClientsData = clientsData.map(client => ({
+  ...client,
+  role: client.role as UserRole
+}));
+
+const typedLawyersData = lawyersData.map(lawyer => ({
+  ...lawyer,
+  role: lawyer.role as UserRole
+}));
+
+const typedJudgesData = judgesData.map(judge => ({
+  ...judge,
+  role: judge.role as UserRole
+}));
+
+const typedCasesData = casesData.map(caseItem => ({
+  ...caseItem,
+  status: caseItem.status as CaseStatus
+})) as Case[];
+
 // Initial users data from JSON files
 const INITIAL_USERS: User[] = [
-  // Combine data from all user JSON files
-  ...clerksData,
-  ...clientsData, 
-  ...lawyersData,
-  ...judgesData,
+  // Combine data from all user JSON files with proper typing
+  ...typedClerksData,
+  ...typedClientsData, 
+  ...typedLawyersData,
+  ...typedJudgesData,
   // Add these default users if JSON files are empty
   {
     id: '5',
     name: 'Michael Williams',
     email: 'michael@example.com',
-    role: 'client',
+    role: 'client' as UserRole,
     avatarUrl: 'https://ui-avatars.com/api/?name=Michael+Williams&background=random'
   },
   {
     id: '6',
     name: 'Sarah Davis',
     email: 'sarah@example.com',
-    role: 'client',
+    role: 'client' as UserRole,
     avatarUrl: 'https://ui-avatars.com/api/?name=Sarah+Davis&background=random'
   },
   {
     id: '7',
     name: 'Robert Parker',
     email: 'robert@example.com',
-    role: 'lawyer',
+    role: 'lawyer' as UserRole,
     avatarUrl: 'https://ui-avatars.com/api/?name=Robert+Parker&background=random'
   }
 ];
@@ -116,7 +141,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     // Load all data with JSON fallbacks
-    const storedCases = loadFromStorage<Case>('cases', casesData, []);
+    const storedCases = loadFromStorage<Case>('cases', typedCasesData, []);
     const storedMessages = loadFromStorage<Message>('messages', [], []);
     const storedHearings = loadFromStorage<Hearing>('hearings', [], []);
     const storedEvidences = loadFromStorage<Evidence>('evidences', [], []);
@@ -135,19 +160,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             typeof parsedUser.name === 'string' && 
             typeof parsedUser.email === 'string' && 
             typeof parsedUser.role === 'string') {
-          authUser = parsedUser as User;
+          authUser = {
+            ...parsedUser,
+            role: parsedUser.role as UserRole
+          };
         }
       } catch (error) {
         console.error("Error parsing user data from localStorage:", error);
       }
     }
     
-    // Combine data from all user JSON files for our users
+    // Combine data from all user JSON files for our users - make sure types are correct
     const allUsersFromJson = [
-      ...clerksData.map((u: any) => ({ ...u, role: 'clerk' })),
-      ...clientsData.map((u: any) => ({ ...u, role: 'client' })),
-      ...lawyersData.map((u: any) => ({ ...u, role: 'lawyer' })),
-      ...judgesData.map((u: any) => ({ ...u, role: 'judge' }))
+      ...typedClerksData,
+      ...typedClientsData,
+      ...typedLawyersData,
+      ...typedJudgesData
     ];
     
     // Get stored users - use JSON file data if available
@@ -181,7 +209,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCaseRequests(storedCaseRequests);
     
     // Save initial data structure if not exists
-    if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify(casesData.length > 0 ? casesData : []));
+    if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify(typedCasesData.length > 0 ? typedCasesData : []));
     if (storedMessages.length === 0) localStorage.setItem('courtwise_messages', JSON.stringify([]));
     if (storedHearings.length === 0) localStorage.setItem('courtwise_hearings', JSON.stringify([]));
     if (storedEvidences.length === 0) localStorage.setItem('courtwise_evidences', JSON.stringify([]));
