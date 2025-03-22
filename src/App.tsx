@@ -24,6 +24,7 @@ import Docket from "./pages/Docket";
 import Schedule from "./pages/Schedule";
 import CaseSummary from "./pages/CaseSummary";
 import NewCases from "./pages/NewCases";
+import FileCasePage from "./pages/FileCasePage"; // Add the new page import
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
                 {/* Case Management */}
                 <Route path="cases" element={<Cases />} />
                 <Route path="cases/:id" element={<CaseDetails />} />
+                <Route path="file-case" element={<FileCasePage />} /> {/* Add the new route */}
                 
                 {/* Communication */}
                 <Route path="messages" element={<Messages />} />
