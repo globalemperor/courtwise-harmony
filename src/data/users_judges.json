@@ -1,0 +1,14 @@
+
+[
+  {
+    "id": "judge1",
+    "name": "Honorable James Wilson",
+    "email": "judge@example.com",
+    "password": "password",
+    "role": "judge",
+    "avatarUrl": "https://ui-avatars.com/api/?name=James+Wilson&background=red",
+    "chamberNumber": "A123",
+    "courtDistrict": "Southern District",
+    "yearsOnBench": "12"
+  }
+]

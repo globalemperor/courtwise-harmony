@@ -1,0 +1,25 @@
+
+[
+  {
+    "user1": "clerk1",
+    "user2": "judge1",
+    "messages": [
+      {
+        "id": "msg2",
+        "senderId": "judge1",
+        "content": "I've reviewed the case. Please schedule the initial hearing for November 15th.",
+        "timestamp": "2023-10-17T08:45:00Z",
+        "read": true,
+        "caseId": "case1"
+      },
+      {
+        "id": "msg1",
+        "senderId": "clerk1",
+        "content": "A new property dispute case has been filed: Smith v. Johnson (CV-2023-1234). The case has been assigned to your court.",
+        "timestamp": "2023-10-16T14:30:00Z",
+        "read": true,
+        "caseId": "case1"
+      }
+    ]
+  }
+]

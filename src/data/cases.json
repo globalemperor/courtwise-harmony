@@ -1,0 +1,47 @@
+
+[
+  {
+    "id": "case1",
+    "title": "Smith v. Johnson",
+    "description": "Dispute over property boundaries between neighbors",
+    "caseNumber": "CV-2023-1234",
+    "status": "active",
+    "clientId": "client1",
+    "lawyerId": "lawyer1",
+    "createdAt": "2023-10-15T10:30:00Z",
+    "updatedAt": "2023-10-20T14:45:00Z",
+    "nextHearingDate": "2023-11-15T09:00:00Z",
+    "filedDate": "2023-10-15T10:30:00Z",
+    "courtRoom": "301",
+    "judgeName": "Honorable James Wilson",
+    "hearings": [
+      {
+        "id": "hearing1",
+        "date": "2023-11-15T09:00:00Z",
+        "courtId": "court1",
+        "judgeId": "judge1",
+        "clerkId": "clerk1",
+        "location": "Room 301, County Courthouse",
+        "summary": "Initial hearing to establish facts of the case",
+        "nextHearing": "2023-12-10T09:00:00Z",
+        "status": "scheduled"
+      }
+    ],
+    "plaintiff": {
+      "name": "Michael Williams",
+      "id": "client1"
+    },
+    "defendant": {
+      "name": "Thomas Johnson",
+      "id": "defendant1"
+    },
+    "plaintiff_lawyer": {
+      "name": "Robert Parker",
+      "id": "lawyer1"
+    },
+    "defendant_lawyer": {
+      "name": "Jennifer Lopez",
+      "id": "lawyer2"
+    }
+  }
+]

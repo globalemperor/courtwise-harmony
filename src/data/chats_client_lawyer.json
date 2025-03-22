@@ -1,0 +1,30 @@
+
+[
+  {
+    "user1": "client1",
+    "user2": "lawyer1",
+    "messages": [
+      {
+        "id": "msg3",
+        "senderId": "lawyer1",
+        "content": "I've filed your case with the court. We have a hearing scheduled for November 15th.",
+        "timestamp": "2023-10-16T15:45:00Z",
+        "read": true
+      },
+      {
+        "id": "msg2",
+        "senderId": "client1",
+        "content": "Yes, I have all the property documents you requested. When should we meet?",
+        "timestamp": "2023-10-15T11:30:00Z",
+        "read": true
+      },
+      {
+        "id": "msg1",
+        "senderId": "lawyer1",
+        "content": "Hello Mr. Williams, I'll be representing you in your property dispute case. Do you have all the documentation ready?",
+        "timestamp": "2023-10-15T10:45:00Z",
+        "read": true
+      }
+    ]
+  }
+]

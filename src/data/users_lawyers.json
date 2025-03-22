@@ -1,0 +1,25 @@
+
+[
+  {
+    "id": "lawyer1",
+    "name": "Robert Parker",
+    "email": "lawyer@example.com",
+    "password": "password",
+    "role": "lawyer",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Robert+Parker&background=green",
+    "barId": "BAR12345",
+    "yearsOfExperience": "8",
+    "specialization": "Corporate Law"
+  },
+  {
+    "id": "lawyer2",
+    "name": "Jennifer Lopez",
+    "email": "jennifer@example.com",
+    "password": "password",
+    "role": "lawyer",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Jennifer+Lopez&background=red",
+    "barId": "BAR67890",
+    "yearsOfExperience": "15",
+    "specialization": "Criminal Law"
+  }
+]

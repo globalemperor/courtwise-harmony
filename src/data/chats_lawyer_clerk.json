@@ -1,0 +1,33 @@
+
+[
+  {
+    "user1": "lawyer1",
+    "user2": "clerk1",
+    "messages": [
+      {
+        "id": "msg3",
+        "senderId": "clerk1",
+        "content": "The hearing has been scheduled for November 15th, 9:00 AM in Room 301 with Judge Wilson.",
+        "timestamp": "2023-10-17T09:30:00Z",
+        "read": true,
+        "caseId": "case1"
+      },
+      {
+        "id": "msg2",
+        "senderId": "lawyer1",
+        "content": "Thank you. When can we expect the hearing to be scheduled?",
+        "timestamp": "2023-10-16T11:15:00Z",
+        "read": true,
+        "caseId": "case1"
+      },
+      {
+        "id": "msg1",
+        "senderId": "lawyer1",
+        "content": "I've submitted the Smith v. Johnson case (CV-2023-1234). Please let me know if you need any additional information.",
+        "timestamp": "2023-10-16T10:30:00Z",
+        "read": true,
+        "caseId": "case1"
+      }
+    ]
+  }
+]

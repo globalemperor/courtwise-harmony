@@ -2,6 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Case, Message, Hearing, Evidence, User, UserRole } from '@/types';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+
+// Import JSON data
+import casesData from '../data/cases.json';
+import clerksData from '../data/users_clerks.json';
+import clientsData from '../data/users_clients.json';
+import lawyersData from '../data/users_lawyers.json';
+import judgesData from '../data/users_judges.json';
 
 interface DataContextType {
   cases: Case[];
@@ -47,8 +55,14 @@ interface DataContextType {
   refetch: () => void;
 }
 
-// Initial users data only - not cases
+// Initial users data from JSON files
 const INITIAL_USERS: User[] = [
+  // Combine data from all user JSON files
+  ...clerksData,
+  ...clientsData, 
+  ...lawyersData,
+  ...judgesData,
+  // Add these default users if JSON files are empty
   {
     id: '5',
     name: 'Michael Williams',
@@ -87,26 +101,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadInitialData = () => {
     setLoading(true);
     
-    // Load data from localStorage or use initial values
-    const loadFromStorage = <T,>(key: string, initialData: T[] = []): T[] => {
+    // Load data from localStorage with JSON file fallbacks
+    const loadFromStorage = <T,>(key: string, jsonFallback: T[] = [], initialData: T[] = []): T[] => {
       const stored = localStorage.getItem(`courtwise_${key}`);
       if (stored) {
         try {
           return JSON.parse(stored) as T[];
         } catch (error) {
           console.error(`Error parsing ${key} from localStorage:`, error);
-          return initialData;
+          return jsonFallback.length > 0 ? jsonFallback : initialData;
         }
       }
-      return initialData;
+      return jsonFallback.length > 0 ? jsonFallback : initialData;
     };
     
-    // Load all data
-    const storedCases = loadFromStorage<Case>('cases', []);
-    const storedMessages = loadFromStorage<Message>('messages', []);
-    const storedHearings = loadFromStorage<Hearing>('hearings', []);
-    const storedEvidences = loadFromStorage<Evidence>('evidences', []);
-    const storedCaseRequests = loadFromStorage('caseRequests', []);
+    // Load all data with JSON fallbacks
+    const storedCases = loadFromStorage<Case>('cases', casesData, []);
+    const storedMessages = loadFromStorage<Message>('messages', [], []);
+    const storedHearings = loadFromStorage<Hearing>('hearings', [], []);
+    const storedEvidences = loadFromStorage<Evidence>('evidences', [], []);
+    const storedCaseRequests = loadFromStorage('caseRequests', [], []);
     
     // Fix the type error by properly handling the localStorage data
     const storedUserData = localStorage.getItem('courtwise_user');
@@ -128,8 +142,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
-    // Get stored users - don't use default users if data exists already
-    const storedUsers = loadFromStorage<User>('users', []);
+    // Combine data from all user JSON files for our users
+    const allUsersFromJson = [
+      ...clerksData.map((u: any) => ({ ...u, role: 'clerk' })),
+      ...clientsData.map((u: any) => ({ ...u, role: 'client' })),
+      ...lawyersData.map((u: any) => ({ ...u, role: 'lawyer' })),
+      ...judgesData.map((u: any) => ({ ...u, role: 'judge' }))
+    ];
+    
+    // Get stored users - use JSON file data if available
+    const storedUsers = loadFromStorage<User>('users', allUsersFromJson, INITIAL_USERS);
     
     // Combine auth user (if valid) with stored users, ensuring no duplicates
     let combinedUsers: User[] = [...storedUsers];
@@ -159,7 +181,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCaseRequests(storedCaseRequests);
     
     // Save initial data structure if not exists
-    if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify([]));
+    if (storedCases.length === 0) localStorage.setItem('courtwise_cases', JSON.stringify(casesData.length > 0 ? casesData : []));
     if (storedMessages.length === 0) localStorage.setItem('courtwise_messages', JSON.stringify([]));
     if (storedHearings.length === 0) localStorage.setItem('courtwise_hearings', JSON.stringify([]));
     if (storedEvidences.length === 0) localStorage.setItem('courtwise_evidences', JSON.stringify([]));

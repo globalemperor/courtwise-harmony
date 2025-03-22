@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
@@ -61,11 +60,9 @@ const FileCasePage = () => {
   const { toast } = useToast();
   const [filing, setFiling] = useState(false);
 
-  // Get clients and clerks from data context
   const clients = getUsersByRole("client");
   const clerks = getUsersByRole("clerk");
   
-  // Mock courts data - in a real app, this would come from the backend
   const courts = [
     { id: "court1", name: "Superior Court of Justice" },
     { id: "court2", name: "District Court" },
@@ -93,7 +90,6 @@ const FileCasePage = () => {
     setFiling(true);
     
     try {
-      // Step 1: Create the case
       const newCase = await createCase({
         title: values.title,
         description: values.description,
@@ -101,13 +97,11 @@ const FileCasePage = () => {
         status: "pending",
         clientId: values.clientId,
         lawyerId: user.id,
-        type: values.caseType,
         filedDate: new Date().toISOString(),
         courtRoom: "To be assigned",
         judgeName: "To be assigned"
       });
       
-      // Step 2: Notify the clerk
       const selectedClerk = clerks.length > 0 ? clerks[0] : null;
       
       if (selectedClerk) {
@@ -121,7 +115,6 @@ const FileCasePage = () => {
         });
       }
       
-      // Step 3: Notify the client
       const client = users.find(u => u.id === values.clientId);
       if (client) {
         await sendMessage({
@@ -134,13 +127,11 @@ const FileCasePage = () => {
         });
       }
       
-      // Success notification
       toast({
         title: "Case filed successfully",
         description: `Case #${newCase.caseNumber} has been created and the court clerk has been notified.`,
       });
       
-      // Redirect to the case details page
       navigate(`/cases/${newCase.id}`);
     } catch (error) {
       console.error("Error filing case:", error);

@@ -1,0 +1,13 @@
+
+[
+  {
+    "id": "clerk1",
+    "name": "John Smith",
+    "email": "clerk@example.com",
+    "password": "password",
+    "role": "clerk",
+    "avatarUrl": "https://ui-avatars.com/api/?name=John+Smith&background=purple",
+    "courtId": "court1",
+    "department": "Civil Division"
+  }
+]

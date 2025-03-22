@@ -1,0 +1,19 @@
+
+[
+  {
+    "id": "client1",
+    "name": "Michael Williams",
+    "email": "client@example.com",
+    "password": "password",
+    "role": "client",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Michael+Williams&background=blue"
+  },
+  {
+    "id": "client2",
+    "name": "Sarah Davis",
+    "email": "sarah@example.com",
+    "password": "password",
+    "role": "client",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Sarah+Davis&background=green"
+  }
+]
