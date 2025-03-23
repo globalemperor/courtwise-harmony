@@ -24,18 +24,18 @@ import Docket from "./pages/Docket";
 import Schedule from "./pages/Schedule";
 import CaseSummary from "./pages/CaseSummary";
 import NewCases from "./pages/NewCases";
-import FileCasePage from "./pages/FileCasePage"; // Add the new page import
+import FileCasePage from "./pages/FileCasePage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <DataProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <DataProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
             <Routes>
               <Route path="/" element={<Index />} />
               
@@ -51,7 +51,7 @@ const App = () => (
                 {/* Case Management */}
                 <Route path="cases" element={<Cases />} />
                 <Route path="cases/:id" element={<CaseDetails />} />
-                <Route path="file-case" element={<FileCasePage />} /> {/* Add the new route */}
+                <Route path="file-case" element={<FileCasePage />} />
                 
                 {/* Communication */}
                 <Route path="messages" element={<Messages />} />
@@ -77,10 +77,10 @@ const App = () => (
               
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </DataProvider>
-    </AuthProvider>
+          </TooltipProvider>
+        </DataProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
