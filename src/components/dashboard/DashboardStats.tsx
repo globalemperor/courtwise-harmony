@@ -8,9 +8,8 @@ import {
 } from "@/components/ui/card";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
-import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { FileText } from "lucide-react";
+import { Doughnut } from "react-chartjs-2";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Register ChartJS components
