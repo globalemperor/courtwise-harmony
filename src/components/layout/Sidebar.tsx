@@ -7,9 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   LayoutDashboard, FileText, MessagesSquare, Calendar, Users, 
   GanttChartSquare, ScaleIcon, PenSquare, LogOut, UserCog,
-  Menu, X, Syringe,
+  Menu, ChevronLeft, Briefcase, Gavel, UserRound, ClipboardCheck
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -18,7 +17,6 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(true);
   
   if (!user) return null;
   
@@ -33,7 +31,7 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
     },
     {
       title: "Cases",
-      icon: <FileText className="h-5 w-5" />,
+      icon: <Briefcase className="h-5 w-5" />,
       href: "/cases",
       roles: ["client", "lawyer", "clerk", "judge"],
     },
@@ -57,13 +55,13 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
     },
     {
       title: "Find Lawyer",
-      icon: <Syringe className="h-5 w-5" />,
+      icon: <UserRound className="h-5 w-5" />,
       href: "/find-lawyer",
       roles: ["client"],
     },
     {
       title: "Case Requests",
-      icon: <PenSquare className="h-5 w-5" />,
+      icon: <ClipboardCheck className="h-5 w-5" />,
       href: "/case-requests",
       roles: ["lawyer"],
     },
@@ -87,7 +85,7 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
     },
     {
       title: "Case Summary",
-      icon: <ScaleIcon className="h-5 w-5" />,
+      icon: <FileText className="h-5 w-5" />,
       href: "/case-summary",
       roles: ["judge"],
     },
@@ -102,81 +100,119 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
   const filteredMenuItems = menuItems.filter((item) => item.roles.includes(user.role));
   
   return (
-    <Collapsible
-      open={shown}
-      onOpenChange={setShown}
-      className="fixed inset-y-0 left-0 z-20 flex w-72 flex-col border-r bg-background"
-    >
-      <div className="flex h-14 items-center border-b px-4">
-        <Link to="/" className="flex items-center">
-          <ScaleIcon className="mr-2 h-6 w-6" />
-          <span className="text-lg font-semibold">CourtWise</span>
-        </Link>
-        {isMobile && (
-          <CollapsibleTrigger asChild className="ml-auto">
-            <Button variant="ghost" size="icon">
-              <X className="h-5 w-5" />
-            </Button>
-          </CollapsibleTrigger>
-        )}
-      </div>
-      <ScrollArea className="flex-1 py-4">
-        <nav className="grid gap-1 px-2">
-          {filteredMenuItems.map((item) => (
-            <Button
-              key={item.href}
-              variant={isActive(item.href) ? "secondary" : "ghost"}
-              className="justify-start"
-              asChild
-              onClick={() => isMobile && setShown(false)}
+    <>
+      {/* Mobile menu toggle button - visible only on mobile */}
+      {!shown && isMobile && (
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => setShown(true)}
+          className="fixed z-50 left-4 top-4 md:hidden bg-white shadow-md"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
+
+      {/* Sidebar backdrop - only on mobile */}
+      {shown && isMobile && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShown(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside 
+        className={`${
+          shown ? 'translate-x-0' : '-translate-x-full'
+        } fixed md:relative z-50 h-full w-72 border-r bg-white shadow-sm transition-transform duration-300 md:translate-x-0`}
+      >
+        <div className="flex h-14 items-center justify-between border-b px-4">
+          <Link to="/" className="flex items-center">
+            <ScaleIcon className="mr-2 h-6 w-6 text-primary" />
+            <span className="text-lg font-semibold">CourtWise</span>
+          </Link>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShown(false)}
+            className="md:hidden"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShown(!shown)}
+            className="hidden md:flex"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <ScrollArea className="flex-1 h-[calc(100vh-3.5rem-5rem)]">
+          <nav className="grid gap-1 px-2 py-4">
+            {filteredMenuItems.map((item) => (
+              <Button
+                key={item.href}
+                variant={isActive(item.href) ? "secondary" : "ghost"}
+                className={`justify-start ${!shown && !isMobile ? 'w-10 px-2 mx-auto' : 'w-full'}`}
+                asChild
+                onClick={() => isMobile && setShown(false)}
+              >
+                <Link to={item.href} className="flex items-center">
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                    {item.icon}
+                  </div>
+                  {(shown || isMobile) && <span className="ml-2">{item.title}</span>}
+                </Link>
+              </Button>
+            ))}
+          </nav>
+        </ScrollArea>
+
+        <div className="border-t p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={user.avatarUrl} />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            {(shown || isMobile) && (
+              <div className="grid gap-0.5 text-sm">
+                <div className="font-medium">{user.name}</div>
+                <div className="text-xs text-muted-foreground">{user.email}</div>
+              </div>
+            )}
+          </div>
+          <div className={`grid ${(shown || isMobile) ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start" 
+              onClick={() => {
+                navigate("/profile/edit");
+                if (isMobile) setShown(false);
+              }}
             >
-              <Link to={item.href}>
-                {item.icon}
-                <span className="ml-2">{item.title}</span>
-              </Link>
+              <UserCog className="mr-2 h-4 w-4" />
+              {(shown || isMobile) && "Edit Profile"}
             </Button>
-          ))}
-        </nav>
-      </ScrollArea>
-      <div className="border-t p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={user.avatarUrl} />
-            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="grid gap-0.5 text-sm">
-            <div className="font-medium">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{user.email}</div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-50"
+              onClick={() => {
+                logout();
+                if (isMobile) setShown(false);
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {(shown || isMobile) && "Logout"}
+            </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full justify-start" 
-            onClick={() => {
-              navigate("/profile/edit");
-              if (isMobile) setShown(false);
-            }}
-          >
-            <UserCog className="mr-2 h-4 w-4" />
-            Edit Profile
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-50"
-            onClick={() => {
-              logout();
-              if (isMobile) setShown(false);
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
-        </div>
-      </div>
-    </Collapsible>
+      </aside>
+    </>
   );
 };
 

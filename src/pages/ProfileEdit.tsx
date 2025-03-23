@@ -20,7 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCog } from "lucide-react";
+import { 
+  Loader2, UserCog, Briefcase, ScaleIcon,
+  UserRound, ClipboardCheck
+} from "lucide-react";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -100,19 +103,28 @@ const ProfileEdit = () => {
     }
   };
 
-  // Generate a random avatar using different services
-  const generateNewAvatar = () => {
-    const seed = Math.random().toString(36).substring(2, 10);
-    const services = [
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(form.getValues('name'))}&background=random&color=fff&size=128`,
-      `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`,
-      `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`,
-      `https://api.dicebear.com/7.x/personas/svg?seed=${seed}`,
-      `https://api.dicebear.com/7.x/initials/svg?seed=${form.getValues('name')}`
-    ];
+  // Generate a professional avatar based on user role
+  const generateProfessionalAvatar = () => {
+    let avatarUrl = "";
     
-    const randomAvatar = services[Math.floor(Math.random() * services.length)];
-    form.setValue('avatarUrl', randomAvatar);
+    // Set avatars based on role
+    switch(user.role) {
+      case "lawyer":
+        avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=lawyer&backgroundColor=b6e3f4&accessories=prescription01&clothingGraphic=skull&top=shortWaved&hairColor=black";
+        break;
+      case "judge":
+        avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=judge&accessories=prescription02&clothingGraphic=diamond&top=shortCurly&hairColor=auburn&facialHairType=beardMedium";
+        break;
+      case "clerk":
+        avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=clerk&accessories=round&clothingGraphic=bear&top=bob&hairColor=brown";
+        break;
+      case "client":
+      default:
+        avatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=client&top=longHair&accessoriesChance=50";
+        break;
+    }
+    
+    form.setValue('avatarUrl', avatarUrl);
   };
 
   return (
@@ -138,15 +150,20 @@ const ProfileEdit = () => {
           <CardContent className="flex flex-col items-center space-y-4">
             <Avatar className="h-24 w-24">
               <AvatarImage src={form.watch('avatarUrl')} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback>
+                {user.role === "lawyer" && <Briefcase className="h-8 w-8 text-primary" />}
+                {user.role === "judge" && <ScaleIcon className="h-8 w-8 text-primary" />}
+                {user.role === "clerk" && <ClipboardCheck className="h-8 w-8 text-primary" />}
+                {user.role === "client" && <UserRound className="h-8 w-8 text-primary" />}
+              </AvatarFallback>
             </Avatar>
             <Button 
               variant="outline" 
-              onClick={generateNewAvatar}
+              onClick={generateProfessionalAvatar}
               type="button"
               className="w-full"
             >
-              Generate New Avatar
+              Generate Professional Avatar
             </Button>
           </CardContent>
         </Card>
@@ -183,24 +200,6 @@ const ProfileEdit = () => {
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input placeholder="Your email address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="avatarUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avatar URL (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="URL to your avatar image" 
-                          {...field} 
-                          value={field.value || ''}
-                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -22,10 +22,12 @@ const MainLayout = () => {
   }
 
   return (
-    <div className="court-layout">
+    <div className={`flex min-h-screen bg-gray-50 ${sidebarShown ? 'ml-0' : 'ml-0'}`}>
       <Sidebar shown={sidebarShown} setShown={setSidebarShown} />
-      <main className="court-main">
-        <Outlet />
+      <main className={`flex-1 transition-all duration-300 ${sidebarShown ? 'md:ml-72' : 'ml-0'} p-6 overflow-auto`}>
+        <div className="max-w-7xl mx-auto">
+          <Outlet />
+        </div>
       </main>
       <Toaster />
     </div>
