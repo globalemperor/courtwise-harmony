@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolean) => void }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isMobile } = useMobile();
+  const { isMobile } = useIsMobile();
   const [open, setOpen] = useState(true);
   
   if (!user) return null;

@@ -106,23 +106,23 @@ const FileCasePage = () => {
     setFiling(true);
     
     try {
+      // Store defendant information in the description field since there's no dedicated field for it
+      const defendantInfoText = `Defendant: ${values.defendantName} (${values.defendantPhone})
+ID: ${values.defendantIdType} ${values.defendantIdNumber}
+Lawyer: ${values.defendantLawyer || "Not specified"}`;
+      
+      const fullDescription = `${values.description}\n\n${defendantInfoText}`;
+      
       const newCase = await createCase({
         title: values.title,
-        description: values.description,
+        description: fullDescription,
         caseNumber: `CV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
         status: "pending",
         clientId: values.clientId,
         lawyerId: user.id,
         filedDate: new Date().toISOString(),
         courtRoom: "To be assigned",
-        judgeName: "To be assigned",
-        defendantInfo: {
-          name: values.defendantName,
-          phone: values.defendantPhone,
-          idType: values.defendantIdType,
-          idNumber: values.defendantIdNumber,
-          lawyer: values.defendantLawyer || "Not specified"
-        }
+        judgeName: "To be assigned"
       });
       
       const selectedClerk = clerks.length > 0 ? clerks[0] : null;

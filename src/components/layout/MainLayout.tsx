@@ -1,5 +1,5 @@
 
-import { Sidebar } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate, Outlet } from "react-router-dom";
