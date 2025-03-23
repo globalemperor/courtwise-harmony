@@ -1,4 +1,3 @@
-
 // Original user types
 export type UserRole = 'client' | 'lawyer' | 'clerk' | 'judge';
 
@@ -8,6 +7,13 @@ export interface User {
   email: string;
   role: UserRole;
   avatarUrl?: string;
+  phone?: string;
+  address?: string;
+  specialization?: string;
+  governmentId?: {
+    type: string;
+    number: string;
+  };
 }
 
 export type CaseStatus = 
@@ -33,6 +39,12 @@ export interface Case {
   filedDate?: string;
   courtRoom?: string;
   judgeName?: string;
+  defendantInfo?: {
+    name: string;
+    contactNumber: string;
+    idType: string;
+    idNumber: string;
+  };
 }
 
 export interface Message {

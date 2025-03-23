@@ -1,225 +1,146 @@
+
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Briefcase, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
+// Government ID types
+const GOV_ID_TYPES = [
+  { value: "aadhar", label: "Aadhar Card" },
+  { value: "passport", label: "Passport" },
+  { value: "pan", label: "PAN Card" },
+  { value: "voter", label: "Voter ID" },
+  { value: "driving", label: "Driving License" },
+];
+
+// Form schema with validation
 const formSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  clientId: z.string().min(1, "Client must be selected"),
-  caseType: z.string().min(1, "Case type must be selected"),
-  defendantName: z.string().min(2, "Defendant name is required"),
-  defendantLawyer: z.string().optional(),
-  courtId: z.string().min(1, "Court must be selected"),
-  evidence: z.string().optional(),
+  title: z.string().min(5, { message: "Title must be at least 5 characters" }),
+  description: z.string().min(20, { message: "Description must be at least 20 characters" }),
+  caseType: z.string().min(1, { message: "Please select a case type" }),
+  defendant: z.object({
+    name: z.string().min(2, { message: "Defendant name is required" }),
+    contactNumber: z.string().min(10, { message: "Valid contact number is required" }),
+    govIdType: z.string().min(1, { message: "Please select an ID type" }),
+    govIdNumber: z.string().min(4, { message: "Government ID number is required" })
+  })
 });
 
-const caseTypes = [
-  "Civil",
-  "Criminal",
-  "Family",
-  "Commercial",
-  "Immigration",
-  "Intellectual Property",
-  "Personal Injury",
-  "Real Estate",
-  "Tax",
-  "Employment",
-];
+type FormValues = z.infer<typeof formSchema>;
 
 const FileCasePage = () => {
   const { user } = useAuth();
-  const { getUsersByRole, createCase, sendMessage, users } = useData();
+  const { createCase, getUsersByRole } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [filing, setFiling] = useState(false);
 
-  const clients = getUsersByRole("client");
-  const clerks = getUsersByRole("clerk");
-  
-  const courts = [
-    { id: "court1", name: "Superior Court of Justice" },
-    { id: "court2", name: "District Court" },
-    { id: "court3", name: "Family Court" },
-    { id: "court4", name: "Municipal Court" },
-  ];
+  // Get all available lawyers
+  const lawyers = getUsersByRole("lawyer");
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  // Initialize the form with react-hook-form and zod validation
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      clientId: "",
       caseType: "",
-      defendantName: "",
-      defendantLawyer: "",
-      courtId: "",
-      evidence: "",
-    },
+      defendant: {
+        name: "",
+        contactNumber: "",
+        govIdType: "",
+        govIdNumber: ""
+      }
+    }
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) return;
-    
-    setFiling(true);
-    
+  const onSubmit = async (data: FormValues) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to file a case",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Format defendant info to include in the case
+      const defendantInfo = {
+        name: data.defendant.name,
+        contactNumber: data.defendant.contactNumber,
+        idType: data.defendant.govIdType,
+        idNumber: data.defendant.govIdNumber
+      };
+
+      // Create the case
       const newCase = await createCase({
-        title: values.title,
-        description: values.description,
+        title: data.title,
+        description: `${data.description}\n\nDefendant Information:\nName: ${defendantInfo.name}\nContact: ${defendantInfo.contactNumber}\nID Type: ${defendantInfo.idType}\nID Number: ${defendantInfo.idNumber}`,
         caseNumber: `CV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
         status: "pending",
-        clientId: values.clientId,
-        lawyerId: user.id,
+        clientId: user.id,
         filedDate: new Date().toISOString(),
-        courtRoom: "To be assigned",
-        judgeName: "To be assigned"
       });
-      
-      const selectedClerk = clerks.length > 0 ? clerks[0] : null;
-      
-      if (selectedClerk) {
-        await sendMessage({
-          content: `A new case "${values.title}" has been filed by ${user.name} and needs processing. Details: ${values.description}. Defendant: ${values.defendantName}. Defendant's lawyer: ${values.defendantLawyer || "Not provided"}. Case type: ${values.caseType}.`,
-          senderId: user.id,
-          senderRole: "lawyer",
-          recipientId: selectedClerk.id,
-          recipientRole: "clerk",
-          caseId: newCase.id
-        });
-      }
-      
-      const client = users.find(u => u.id === values.clientId);
-      if (client) {
-        await sendMessage({
-          content: `I've filed your case "${values.title}" with the court. The case number is ${newCase.caseNumber}. I'll keep you updated on the proceedings.`,
-          senderId: user.id,
-          senderRole: "lawyer",
-          recipientId: client.id,
-          recipientRole: "client",
-          caseId: newCase.id
-        });
-      }
-      
+
       toast({
         title: "Case filed successfully",
-        description: `Case #${newCase.caseNumber} has been created and the court clerk has been notified.`,
+        description: `Your case has been filed with case number ${newCase.caseNumber}`,
       });
-      
-      navigate(`/cases/${newCase.id}`);
+
+      navigate("/cases");
     } catch (error) {
       console.error("Error filing case:", error);
       toast({
         title: "Error filing case",
-        description: "There was a problem filing the case. Please try again.",
+        description: "There was a problem filing your case. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setFiling(false);
     }
   };
 
-  if (!user || user.role !== "lawyer") {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Access Denied</AlertTitle>
-        <AlertDescription>
-          Only lawyers can file new cases. Please login with a lawyer account.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">File a New Case</h1>
-        <p className="text-muted-foreground">Submit a new case to the court on behalf of your client</p>
+        <p className="text-muted-foreground">
+          Complete the form below to file a new case with the court
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            Case Information
-          </CardTitle>
-          <CardDescription>
-            Fill in all required information about the case you're filing
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Case Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter a descriptive title for the case" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="caseType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Case Type</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select case type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {caseTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Case Information</CardTitle>
+              <CardDescription>
+                Provide the details about your case
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Case Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Property Dispute at 123 Main Street" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -228,135 +149,129 @@ const FileCasePage = () => {
                   <FormItem>
                     <FormLabel>Case Description</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Provide a detailed description of the case"
-                        className="min-h-32"
-                        {...field}
+                      <Textarea 
+                        placeholder="Provide a detailed description of your case..." 
+                        className="min-h-[120px]" 
+                        {...field} 
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="clientId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Client</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your client" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="courtId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Court</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select court to file in" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {courts.map((court) => (
-                            <SelectItem key={court.id} value={court.id}>
-                              {court.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="defendantName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Defendant Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter defendant's full name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="defendantLawyer"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Defendant's Lawyer (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter defendant's lawyer if known" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
               <FormField
                 control={form.control}
-                name="evidence"
+                name="caseType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Evidence (Optional)</FormLabel>
+                    <FormLabel>Case Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select case type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="civil">Civil</SelectItem>
+                        <SelectItem value="criminal">Criminal</SelectItem>
+                        <SelectItem value="family">Family</SelectItem>
+                        <SelectItem value="property">Property</SelectItem>
+                        <SelectItem value="employment">Employment</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Defendant Information</CardTitle>
+              <CardDescription>
+                Information about the opposing party
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="defendant.name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Defendant Name</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="List any evidence you plan to submit"
-                        className="min-h-20"
-                        {...field}
-                      />
+                      <Input placeholder="Full name of the defendant" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="flex justify-end gap-4">
-                <Button variant="outline" type="button" onClick={() => navigate(-1)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={filing}>
-                  {filing ? "Filing Case..." : "File Case"}
-                </Button>
+              <FormField
+                control={form.control}
+                name="defendant.contactNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Defendant's contact number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="defendant.govIdType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Government ID Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select ID type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {GOV_ID_TYPES.map(idType => (
+                            <SelectItem key={idType.value} value={idType.value}>
+                              {idType.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="defendant.govIdNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Government ID Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ID number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+              <Button type="submit">File Case</Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </Form>
     </div>
   );
 };

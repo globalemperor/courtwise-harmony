@@ -25,6 +25,7 @@ import Schedule from "./pages/Schedule";
 import CaseSummary from "./pages/CaseSummary";
 import NewCases from "./pages/NewCases";
 import FileCasePage from "./pages/FileCasePage";
+import ProfileEdit from "./pages/ProfileEdit";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,9 @@ const App = () => (
               {/* Protected Routes */}
               <Route path="/" element={<MainLayout />}>
                 <Route path="dashboard" element={<Dashboard />} />
+                
+                {/* Profile Management */}
+                <Route path="profile/edit" element={<ProfileEdit />} />
                 
                 {/* Case Management */}
                 <Route path="cases" element={<Cases />} />

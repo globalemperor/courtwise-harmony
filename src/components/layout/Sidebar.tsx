@@ -1,150 +1,205 @@
 
-import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  Calendar, FileText, Home, Inbox, LayoutDashboard, 
-  LogOut, Menu, Users, Gavel, Briefcase, Search, 
-  UserPlus, ClipboardList
-} from 'lucide-react';
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+  LayoutDashboard, 
+  FileText, 
+  MessageSquare, 
+  Calendar, 
+  Users, 
+  UserCheck, 
+  Gavel,
+  Briefcase,
+  LogOut,
+  Menu,
+  X,
+  User
+} from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-interface SidebarItemProps {
-  icon: React.ElementType;
-  label: string;
-  href: string;
-  isCollapsed: boolean;
+interface SidebarProps {
+  shown: boolean;
+  setShown: (shown: boolean) => void;
 }
 
-const SidebarItem = ({ icon: Icon, label, href, isCollapsed }: SidebarItemProps) => {
-  const location = useLocation();
-  const isActive = location.pathname === href;
-
-  return (
-    <Link
-      to={href}
-      className={cn(
-        'flex items-center py-3 px-4 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors',
-        isActive && 'bg-sidebar-accent font-medium'
-      )}
-    >
-      <Icon className="h-5 w-5 mr-3" />
-      {!isCollapsed && <span>{label}</span>}
-    </Link>
-  );
-};
-
-export const Sidebar = () => {
+const Sidebar = ({ shown, setShown }: SidebarProps) => {
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
-  if (!user) return null;
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
-  let menuItems = [];
+  const toggleSidebar = () => {
+    setShown(!shown);
+  };
 
-  // Common items for all roles
-  const commonItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-    { icon: Inbox, label: 'Messages', href: '/messages' },
-  ];
+  const getNavLinkClass = ({ isActive }: { isActive: boolean }) => {
+    return `flex items-center space-x-3 p-3 rounded-md transition-colors
+      ${isActive 
+        ? "bg-primary text-primary-foreground" 
+        : "hover:bg-accent"}
+      ${!shown && !isMobile ? "justify-center px-2" : ""}`;
+  };
 
-  // Role-specific items
-  switch (user.role) {
-    case 'client':
-      menuItems = [
-        ...commonItems,
-        { icon: FileText, label: 'My Cases', href: '/cases' },
-        { icon: Search, label: 'Find Lawyer', href: '/find-lawyer' },
-        { icon: Calendar, label: 'Hearings', href: '/hearings' },
-      ];
-      break;
-    case 'lawyer':
-      menuItems = [
-        ...commonItems,
-        { icon: Briefcase, label: 'Cases', href: '/cases' },
-        { icon: Calendar, label: 'Hearings', href: '/hearings' },
-        { icon: ClipboardList, label: 'Case Requests', href: '/case-requests' },
-        { icon: Users, label: 'Clients', href: '/clients' },
-      ];
-      break;
-    case 'clerk':
-      menuItems = [
-        ...commonItems,
-        { icon: FileText, label: 'All Cases', href: '/cases' },
-        { icon: Calendar, label: 'Schedule', href: '/schedule' },
-        { icon: UserPlus, label: 'New Cases', href: '/new-cases' },
-      ];
-      break;
-    case 'judge':
-      menuItems = [
-        ...commonItems,
-        { icon: Gavel, label: 'My Docket', href: '/docket' },
-        { icon: Calendar, label: 'Hearings', href: '/hearings' },
-        { icon: FileText, label: 'Case Summary', href: '/case-summary' },
-      ];
-      break;
-    default:
-      menuItems = commonItems;
-  }
+  const renderLinkText = (text: string) => {
+    return shown || isMobile ? <span>{text}</span> : null;
+  };
 
   return (
-    <div
-      className={cn(
-        'h-screen bg-sidebar transition-all duration-300 border-r border-sidebar-border flex flex-col',
-        isCollapsed ? 'w-[70px]' : 'w-[250px]'
-      )}
-    >
-      <div className="flex justify-between items-center h-16 px-4 border-b border-sidebar-border">
-        {!isCollapsed && <h1 className="text-xl font-semibold text-sidebar-foreground">CourtWise</h1>}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 rounded-md hover:bg-sidebar-accent"
-        >
-          <Menu className="h-5 w-5 text-sidebar-foreground" />
-        </button>
-      </div>
-
-      <div className="flex flex-col flex-grow p-2 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => (
-          <SidebarItem
-            key={item.href}
-            icon={item.icon}
-            label={item.label}
-            href={item.href}
-            isCollapsed={isCollapsed}
-          />
-        ))}
-      </div>
-
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center">
-          <img
-            src={user.avatarUrl || 'https://ui-avatars.com/api/?name=User'}
-            alt={user.name}
-            className="h-8 w-8 rounded-full mr-3"
-          />
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user.name}
-              </p>
-              <p className="text-xs text-sidebar-foreground/70 truncate capitalize">
-                {user.role}
-              </p>
-            </div>
-          )}
+    <aside className={`
+      court-sidebar bg-background h-screen flex flex-col border-r 
+      transition-all duration-300 overflow-hidden
+      ${shown ? 'w-64' : 'w-16'}
+      ${isMobile ? 'fixed z-50 shadow-lg' : 'relative'}
+      ${isMobile && !shown ? '-translate-x-full' : 'translate-x-0'}
+    `}>
+      <div className="p-4 border-b flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          {(shown || isMobile) && <span className="font-bold text-lg">CourtWise</span>}
         </div>
-        <button
-          onClick={logout}
-          className={cn(
-            'mt-4 flex items-center py-2 px-3 text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors w-full',
-            isCollapsed && 'justify-center'
-          )}
+        <button 
+          onClick={toggleSidebar}
+          className="p-1 rounded-md hover:bg-accent"
         >
-          <LogOut className="h-5 w-5 mr-2" />
-          {!isCollapsed && <span>Log out</span>}
+          {shown ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
-    </div>
+
+      <div className="p-4 border-b">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className={`
+              flex items-center space-x-3 cursor-pointer
+              ${!shown && !isMobile ? "justify-center" : ""}
+            `}>
+              <Avatar>
+                <AvatarImage src={user?.avatarUrl} />
+                <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+              </Avatar>
+              {(shown || isMobile) && (
+                <div className="overflow-hidden">
+                  <p className="font-medium truncate">{user?.name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user?.role || 'User'}</p>
+                </div>
+              )}
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/profile/edit")}>
+              <User className="mr-2 h-4 w-4" /> Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+        <NavLink to="/dashboard" className={getNavLinkClass}>
+          <LayoutDashboard size={20} />
+          {renderLinkText("Dashboard")}
+        </NavLink>
+
+        {user?.role === 'client' && (
+          <>
+            <NavLink to="/cases" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("My Cases")}
+            </NavLink>
+            <NavLink to="/find-lawyer" className={getNavLinkClass}>
+              <Briefcase size={20} />
+              {renderLinkText("Find Lawyer")}
+            </NavLink>
+            <NavLink to="/file-case" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("File a Case")}
+            </NavLink>
+          </>
+        )}
+
+        {user?.role === 'lawyer' && (
+          <>
+            <NavLink to="/cases" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("Cases")}
+            </NavLink>
+            <NavLink to="/case-requests" className={getNavLinkClass}>
+              <UserCheck size={20} />
+              {renderLinkText("Case Requests")}
+            </NavLink>
+            <NavLink to="/clients" className={getNavLinkClass}>
+              <Users size={20} />
+              {renderLinkText("Clients")}
+            </NavLink>
+          </>
+        )}
+
+        {user?.role === 'clerk' && (
+          <>
+            <NavLink to="/new-cases" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("New Cases")}
+            </NavLink>
+            <NavLink to="/hearings" className={getNavLinkClass}>
+              <Calendar size={20} />
+              {renderLinkText("Hearings")}
+            </NavLink>
+          </>
+        )}
+
+        {user?.role === 'judge' && (
+          <>
+            <NavLink to="/docket" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("My Docket")}
+            </NavLink>
+            <NavLink to="/case-summary" className={getNavLinkClass}>
+              <Gavel size={20} />
+              {renderLinkText("Case Summary")}
+            </NavLink>
+          </>
+        )}
+
+        <NavLink to="/messages" className={getNavLinkClass}>
+          <MessageSquare size={20} />
+          {renderLinkText("Messages")}
+        </NavLink>
+
+        <NavLink to="/schedule" className={getNavLinkClass}>
+          <Calendar size={20} />
+          {renderLinkText("Schedule")}
+        </NavLink>
+      </nav>
+
+      <div className="p-4 border-t">
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          className={`w-full ${!shown && !isMobile ? "px-2" : ""}`}
+        >
+          <LogOut size={20} />
+          {(shown || isMobile) && <span className="ml-2">Logout</span>}
+        </Button>
+      </div>
+    </aside>
   );
 };
+
+export default Sidebar;
