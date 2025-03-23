@@ -12,76 +12,24 @@ import { Search, PlusCircle, Send, User, Info, AlertOctagon } from "lucide-react
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSearchParams } from "react-router-dom";
-import { UserRole, Case } from "@/types";
+import { UserRole } from "@/types";
 
-// Helper function to check if communication is allowed between roles based on case involvement
-const canCommunicate = (senderUser: any, recipientUser: any, cases: Case[], getUserById: any): boolean => {
-  const senderRole = senderUser.role;
-  const recipientRole = recipientUser.role;
+// Helper function to check if communication is allowed between roles
+const canCommunicate = (senderRole: UserRole, recipientRole: UserRole): boolean => {
+  // Define allowed communication channels
+  const allowedCommunication: Record<UserRole, UserRole[]> = {
+    'client': ['lawyer'],
+    'lawyer': ['client', 'clerk', 'judge'],
+    'clerk': ['lawyer', 'judge'],
+    'judge': ['lawyer', 'clerk']
+  };
   
-  // 1. Client can ONLY talk to their assigned lawyer
-  if (senderRole === 'client' && recipientRole === 'lawyer') {
-    // Check if this lawyer is assigned to any of the client's cases
-    return cases.some(c => c.clientId === senderUser.id && c.lawyerId === recipientUser.id);
-  }
-  
-  // 2. Lawyer can talk to:
-  if (senderRole === 'lawyer') {
-    // 2a. Their clients
-    if (recipientRole === 'client') {
-      return cases.some(c => c.lawyerId === senderUser.id && c.clientId === recipientUser.id);
-    }
-    // 2b. Clerks handling their cases
-    if (recipientRole === 'clerk') {
-      // Lawyers can talk to any clerk (clerk assignment is determined when case progresses)
-      return true; 
-    }
-    // 2c. Judges assigned to their cases
-    if (recipientRole === 'judge') {
-      // Get all cases where this lawyer is involved
-      const lawyerCases = cases.filter(c => c.lawyerId === senderUser.id);
-      // Check if the judge is assigned to any of these cases
-      return lawyerCases.some(c => c.judgeName === recipientUser.name);
-    }
-    // 2d. Opposing lawyers (for future implementation)
-    return false;
-  }
-  
-  // 3. Clerk can talk to:
-  if (senderRole === 'clerk') {
-    // 3a. Lawyers involved in cases
-    if (recipientRole === 'lawyer') {
-      return true; // Clerks can communicate with all lawyers
-    }
-    // 3b. Judges they've assigned cases to
-    if (recipientRole === 'judge') {
-      return true; // Clerks can communicate with all judges
-    }
-    return false;
-  }
-  
-  // 4. Judge can talk to:
-  if (senderRole === 'judge') {
-    // 4a. Clerks who assigned them cases
-    if (recipientRole === 'clerk') {
-      return true;
-    }
-    // 4b. Lawyers involved in their assigned cases
-    if (recipientRole === 'lawyer') {
-      // Get cases where this judge is assigned
-      const judgeCases = cases.filter(c => c.judgeName === senderUser.name);
-      // Check if lawyer is involved in any of these cases
-      return judgeCases.some(c => c.lawyerId === recipientUser.id);
-    }
-    return false;
-  }
-  
-  return false;
+  return allowedCommunication[senderRole]?.includes(recipientRole) || false;
 };
 
 const Messages = () => {
   const { user } = useAuth();
-  const { messages, users, cases, sendMessage, getUserById } = useData();
+  const { messages, users, sendMessage, getUserById } = useData();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const caseIdFromUrl = searchParams.get('case');
@@ -125,37 +73,56 @@ const Messages = () => {
     )
   );
 
-  // Get allowed users that the current user can message
-  const getAllowedUsers = () => {
-    if (!user) return [];
-    
-    return users.filter(otherUser => 
-      otherUser.id !== user.id && 
-      canCommunicate(user, otherUser, cases, getUserById)
-    );
+  // Get filtered conversation partners that the current user can communicate with
+  const getFilteredUsersByRole = (role: UserRole): string[] => {
+    if (!canCommunicate(user.role, role)) return [];
+    return users
+      .filter(u => u.role === role && u.id !== user.id)
+      .map(u => u.id);
   };
 
-  // Filter conversations based on communication rules and search query
-  const filteredConversationPartners = conversationPartners.filter(partnerId => {
-    const partner = getUserById(partnerId);
-    if (!partner) return false;
+  // Get all potential users that the current user can message
+  const getAllowedUserIds = (): string[] => {
+    const allowedUsers: string[] = [];
     
-    // Check if communication is allowed with this partner
-    if (!canCommunicate(user, partner, cases, getUserById)) return false;
-    
-    // If searching, filter by name or email
-    if (searchQuery) {
-      return partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             partner.email.toLowerCase().includes(searchQuery.toLowerCase());
+    // Add users based on role permissions
+    if (user.role === 'client') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+    } else if (user.role === 'lawyer') {
+      allowedUsers.push(...getFilteredUsersByRole('client'));
+      allowedUsers.push(...getFilteredUsersByRole('clerk'));
+      allowedUsers.push(...getFilteredUsersByRole('judge'));
+    } else if (user.role === 'clerk') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+      allowedUsers.push(...getFilteredUsersByRole('judge'));
+    } else if (user.role === 'judge') {
+      allowedUsers.push(...getFilteredUsersByRole('lawyer'));
+      allowedUsers.push(...getFilteredUsersByRole('clerk'));
     }
     
-    return true;
-  });
+    return allowedUsers;
+  };
 
-  // Get potential new recipients (users that the current user can message but hasn't messaged yet)
-  const potentialRecipients = getAllowedUsers().filter(
-    u => !conversationPartners.includes(u.id)
+  // Get potential recipients that the user can message
+  const potentialRecipients = users.filter(
+    u => getAllowedUserIds().includes(u.id) && !conversationPartners.includes(u.id)
   );
+
+  // Filter both existing conversations and potential recipients
+  const filteredConversationPartners = searchQuery
+    ? conversationPartners.filter(partnerId => {
+        const partner = getUserById(partnerId);
+        // Check if the user can communicate with this role
+        if (partner && !canCommunicate(user.role, partner.role)) return false;
+        
+        return partner && 
+          (partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           partner.email.toLowerCase().includes(searchQuery.toLowerCase()));
+      })
+    : conversationPartners.filter(partnerId => {
+        const partner = getUserById(partnerId);
+        return partner && canCommunicate(user.role, partner.role);
+      });
 
   const handleSendMessage = async () => {
     if (!messageContent.trim() || !selectedUser) {
@@ -179,11 +146,11 @@ const Messages = () => {
         return;
       }
 
-      // Check if communication is allowed with this recipient
-      if (!canCommunicate(user, recipient, cases, getUserById)) {
+      // Check if communication is allowed between these roles
+      if (!canCommunicate(user.role, recipient.role)) {
         toast({
           title: "Communication restricted",
-          description: `You cannot send messages to this ${recipient.role} based on case assignments`,
+          description: `${user.role} cannot send messages to ${recipient.role}`,
           variant: "destructive"
         });
         return;
@@ -219,13 +186,13 @@ const Messages = () => {
   const getCommunicationInstructions = () => {
     switch (user.role) {
       case 'client':
-        return "As a client, you can only communicate with the lawyer assigned to your cases.";
+        return "As a client, you can only communicate with lawyers assigned to your cases.";
       case 'lawyer':
-        return "As a lawyer, you can communicate with your clients, court clerks, and judges assigned to your cases.";
+        return "As a lawyer, you can communicate with clients, court clerks, and judges.";
       case 'clerk':
-        return "As a court clerk, you can communicate with lawyers who have filed cases and judges you've assigned to cases.";
+        return "As a court clerk, you can only communicate with lawyers and judges.";
       case 'judge':
-        return "As a judge, you can communicate with court clerks and lawyers involved in cases assigned to you.";
+        return "As a judge, you can only communicate with lawyers and court clerks.";
       default:
         return "";
     }
@@ -251,7 +218,6 @@ const Messages = () => {
           <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm text-blue-800">{getCommunicationInstructions()}</p>
-            <p className="text-xs text-blue-600 mt-1">Messages are private and only visible to the sender and recipient.</p>
           </div>
         </CardContent>
       </Card>
@@ -278,6 +244,9 @@ const Messages = () => {
                     const partner = getUserById(partnerId);
                     if (!partner) return null;
                     
+                    // Skip if user cannot communicate with this partner's role
+                    if (!canCommunicate(user.role, partner.role)) return null;
+                    
                     // Get last message with this partner
                     const lastMessage = userMessages.find(
                       msg => msg.senderId === partnerId || msg.recipientId === partnerId
@@ -286,7 +255,7 @@ const Messages = () => {
                     return (
                       <div
                         key={partnerId}
-                        className={`flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer ${selectedUser === partnerId ? 'bg-accent' : ''}`}
+                        className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
                         onClick={() => setSelectedUser(partnerId)}
                       >
                         <Avatar>
@@ -359,7 +328,7 @@ const Messages = () => {
                           </div>
                           {filteredConversationPartners.map(partnerId => {
                             const partner = getUserById(partnerId);
-                            if (!partner) return null;
+                            if (!partner || !canCommunicate(user.role, partner.role)) return null;
                             
                             return (
                               <SelectItem key={`existing-${partner.id}`} value={partner.id}>
@@ -437,8 +406,6 @@ const Messages = () => {
               onSendMessage={handleSendMessage}
               messageContent={messageContent}
               setMessageContent={setMessageContent}
-              cases={cases}
-              getUserById={getUserById}
             />
           ) : (
             <Card>
@@ -469,9 +436,7 @@ const MessageConversation = ({
   caseId,
   onSendMessage,
   messageContent,
-  setMessageContent,
-  cases,
-  getUserById
+  setMessageContent
 }: { 
   userId: string, 
   userRole: UserRole,
@@ -479,18 +444,15 @@ const MessageConversation = ({
   caseId: string | null,
   onSendMessage: () => void,
   messageContent: string,
-  setMessageContent: (value: string) => void,
-  cases: Case[],
-  getUserById: (id: string) => any
+  setMessageContent: (value: string) => void
 }) => {
-  const { messages } = useData();
+  const { messages, getUserById } = useData();
   const partner = getUserById(partnerId);
   
   if (!partner) return null;
   
   // Check if communication is allowed
-  const currentUser = getUserById(userId);
-  const isCommunicationAllowed = canCommunicate(currentUser, partner, cases, getUserById);
+  const isCommunicationAllowed = canCommunicate(userRole, partner.role);
   
   // Get all messages between these two users
   const conversation = messages

@@ -10,7 +10,6 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   signup: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => void;
   loading: boolean;
 }
 
@@ -80,12 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for saved user in localStorage
     const savedUser = localStorage.getItem('courtwise_user');
     if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error("Error parsing saved user:", error);
-        localStorage.removeItem('courtwise_user');
-      }
+      setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
@@ -116,13 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: (error as Error).message || "Invalid credentials",
         variant: "destructive",
       });
-      // Navigate back to login page with the selected role
-      if (location.pathname.includes('/login/')) {
-        const rolePath = location.pathname.split('/login/')[1];
-        navigate(`/login/${rolePath}`);
-      } else {
-        navigate(`/login/${role}`);
-      }
+      // Ensure we're not stuck on loading state
+      navigate(`/login/${role}`);
     } finally {
       setLoading(false);
     }
@@ -163,35 +152,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: (error as Error).message,
         variant: "destructive",
       });
-      
-      // Navigate back to signup page
-      if (location.pathname.includes('/login/signup')) {
-        navigate(`/login/signup?role=${role}`);
-      } else {
-        navigate(`/login/${role}`);
-      }
+      navigate(`/login/signup?role=${role}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const updateProfile = (data: Partial<User>) => {
-    if (!user) return;
-    
-    const updatedUser = { ...user, ...data };
-    setUser(updatedUser);
-    localStorage.setItem('courtwise_user', JSON.stringify(updatedUser));
-    
-    // Update the mock users data as well
-    if (MOCK_USERS[user.email]) {
-      const { password } = MOCK_USERS[user.email];
-      MOCK_USERS[user.email] = { ...updatedUser, password };
-      
-      // If email changed, update the key in the MOCK_USERS object
-      if (data.email && data.email !== user.email) {
-        MOCK_USERS[data.email] = MOCK_USERS[user.email];
-        delete MOCK_USERS[user.email];
-      }
     }
   };
 
@@ -206,15 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
-      login, 
-      signup, 
-      logout, 
-      updateProfile,
-      loading 
-    }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

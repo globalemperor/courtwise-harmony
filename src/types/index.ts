@@ -1,3 +1,4 @@
+
 // Original user types
 export type UserRole = 'client' | 'lawyer' | 'clerk' | 'judge';
 
@@ -32,13 +33,6 @@ export interface Case {
   filedDate?: string;
   courtRoom?: string;
   judgeName?: string;
-  defendantInfo?: {
-    name: string;
-    phone: string;
-    idType: string;
-    idNumber: string;
-    lawyer?: string;
-  };
 }
 
 export interface Message {
