@@ -17,7 +17,7 @@ const Sidebar = ({ shown, setShown }: { shown: boolean, setShown: (shown: boolea
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isMobile } = useIsMobile();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(true);
   
   if (!user) return null;

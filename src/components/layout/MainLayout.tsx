@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import Sidebar from "./Sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
@@ -6,6 +7,7 @@ import { Navigate, Outlet } from "react-router-dom";
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [sidebarShown, setSidebarShown] = useState(true);
 
   if (loading) {
     return (
@@ -21,7 +23,7 @@ const MainLayout = () => {
 
   return (
     <div className="court-layout">
-      <Sidebar />
+      <Sidebar shown={sidebarShown} setShown={setSidebarShown} />
       <main className="court-main">
         <Outlet />
       </main>
