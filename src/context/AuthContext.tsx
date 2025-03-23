@@ -104,7 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ 
+      // Use signIn instead of signInWithPassword to match the mock implementation
+      const { data, error } = await supabase.auth.signIn({ 
         email, 
         password 
       });
@@ -122,23 +123,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, userData: Partial<User>) => {
     try {
+      // Create meta object with only the properties from User type
+      const userMeta: Record<string, any> = {
+        name: userData.name,
+        role: userData.role,
+      };
+      
+      // Add specialized fields based on role without using direct property access
+      if (userData.role === 'lawyer') {
+        // Use a type assertion to let TypeScript know these properties exist
+        const lawyerData = userData as any;
+        if (lawyerData.specialization) userMeta.specialization = lawyerData.specialization;
+        if (lawyerData.barId) userMeta.barId = lawyerData.barId;
+        if (lawyerData.yearsOfExperience) userMeta.yearsOfExperience = lawyerData.yearsOfExperience;
+      } else if (userData.role === 'clerk') {
+        const clerkData = userData as any;
+        if (clerkData.courtId) userMeta.courtId = clerkData.courtId;
+        if (clerkData.department) userMeta.department = clerkData.department;
+      } else if (userData.role === 'judge') {
+        const judgeData = userData as any;
+        if (judgeData.chamberNumber) userMeta.chamberNumber = judgeData.chamberNumber;
+        if (judgeData.courtDistrict) userMeta.courtDistrict = judgeData.courtDistrict;
+        if (judgeData.yearsOnBench) userMeta.yearsOnBench = judgeData.yearsOnBench;
+      }
+      
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
-          data: {
-            name: userData.name,
-            role: userData.role,
-            // Add other metadata as needed
-            ...(userData.specialization && { specialization: userData.specialization }),
-            ...(userData.barId && { barId: userData.barId }),
-            ...(userData.yearsOfExperience && { yearsOfExperience: userData.yearsOfExperience }),
-            ...(userData.courtId && { courtId: userData.courtId }),
-            ...(userData.department && { department: userData.department }),
-            ...(userData.chamberNumber && { chamberNumber: userData.chamberNumber }),
-            ...(userData.courtDistrict && { courtDistrict: userData.courtDistrict }),
-            ...(userData.yearsOnBench && { yearsOnBench: userData.yearsOnBench })
-          }
+          data: userMeta
         }
       });
       
