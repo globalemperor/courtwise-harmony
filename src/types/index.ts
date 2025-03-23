@@ -15,6 +15,11 @@ export interface User {
     number: string;
   };
   password?: string; // Add password as an optional property
+  // New lawyer-specific fields
+  licenseYear?: string;
+  casesHandled?: number;
+  casesWon?: number;
+  caseTypes?: string[];
 }
 
 export type CaseStatus = 
@@ -93,6 +98,11 @@ export interface SupabaseProfile {
   avatar_url?: string;
   created_at: string;
   updated_at: string;
+  // New lawyer fields for Supabase
+  license_year?: string;
+  cases_handled?: number;
+  cases_won?: number;
+  case_types?: string[];
 }
 
 export interface SupabaseCase {
@@ -174,7 +184,12 @@ export function mapSupabaseProfileToUser(profile: SupabaseProfile): User {
     name: profile.name,
     email: profile.email,
     role: profile.role,
-    avatarUrl: profile.avatar_url
+    avatarUrl: profile.avatar_url,
+    // New lawyer fields
+    licenseYear: profile.license_year,
+    casesHandled: profile.cases_handled,
+    casesWon: profile.cases_won,
+    caseTypes: profile.case_types
   };
 }
 

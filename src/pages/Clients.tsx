@@ -6,30 +6,51 @@ import { Badge } from "@/components/ui/badge";
 import { UserRound, Mail, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const Clients = () => {
+  const { user } = useAuth();
   const { users, getCasesByUser } = useData();
   
-  // Get all clients
-  const clients = users.filter(user => user.role === 'client');
+  if (!user || user.role !== 'lawyer') {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">Access denied</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Get cases where this lawyer is assigned
+  const lawyerCases = getCasesByUser(user.id, 'lawyer');
+  
+  // Get unique client IDs from those cases
+  const clientIds = [...new Set(lawyerCases.map(c => c.clientId))];
+  
+  // Get client data for each client ID
+  const lawyerClients = users.filter(u => 
+    u.role === 'client' && clientIds.includes(u.id)
+  );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Clients</h1>
+        <h1 className="text-2xl font-bold">My Clients</h1>
         <p className="text-muted-foreground">Manage your client relationships</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {clients.length === 0 ? (
+        {lawyerClients.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">No clients found</p>
+              <p className="text-center text-muted-foreground">No clients found. Accept case requests to work with clients.</p>
             </CardContent>
           </Card>
         ) : (
-          clients.map(client => {
-            const clientCases = getCasesByUser(client.id, 'client');
+          lawyerClients.map(client => {
+            const clientCases = getCasesByUser(client.id, 'client')
+              .filter(c => c.lawyerId === user.id);
             
             return (
               <Card key={client.id}>
@@ -66,8 +87,8 @@ const Clients = () => {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Contact
+                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                      <Link to={`/messages?recipient=${client.id}`}>Contact</Link>
                     </Button>
                     {clientCases.length > 0 && (
                       <Button size="sm" className="flex-1" asChild>

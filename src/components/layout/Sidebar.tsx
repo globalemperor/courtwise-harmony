@@ -127,10 +127,6 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
               <Briefcase size={20} />
               {renderLinkText("Find Lawyer")}
             </NavLink>
-            <NavLink to="/file-case" className={getNavLinkClass}>
-              <FileText size={20} />
-              {renderLinkText("File a Case")}
-            </NavLink>
           </>
         )}
 
@@ -139,6 +135,10 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
             <NavLink to="/cases" className={getNavLinkClass}>
               <FileText size={20} />
               {renderLinkText("Cases")}
+            </NavLink>
+            <NavLink to="/file-case" className={getNavLinkClass}>
+              <FileText size={20} />
+              {renderLinkText("File a Case")}
             </NavLink>
             <NavLink to="/case-requests" className={getNavLinkClass}>
               <UserCheck size={20} />

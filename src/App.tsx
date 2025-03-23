@@ -26,6 +26,18 @@ import CaseSummary from "./pages/CaseSummary";
 import NewCases from "./pages/NewCases";
 import FileCasePage from "./pages/FileCasePage";
 import ProfileEdit from "./pages/ProfileEdit";
+import { useAuth } from "./context/AuthContext";
+
+// Create a protected route component for lawyer-only routes
+const LawyerRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  
+  if (!user || user.role !== 'lawyer') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 const queryClient = new QueryClient();
 
@@ -55,7 +67,11 @@ const App = () => (
                 {/* Case Management */}
                 <Route path="cases" element={<Cases />} />
                 <Route path="cases/:id" element={<CaseDetails />} />
-                <Route path="file-case" element={<FileCasePage />} />
+                <Route path="file-case" element={
+                  <LawyerRoute>
+                    <FileCasePage />
+                  </LawyerRoute>
+                } />
                 
                 {/* Communication */}
                 <Route path="messages" element={<Messages />} />
