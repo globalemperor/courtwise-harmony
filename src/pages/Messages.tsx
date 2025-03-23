@@ -53,6 +53,158 @@ const canCommunicate = (
   return isInvolvedInCommonCase();
 };
 
+const MessageIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const MessageConversation = ({ 
+  userId, 
+  userRole,
+  partnerId, 
+  caseId,
+  onSendMessage,
+  messageContent,
+  setMessageContent,
+  userCases
+}: { 
+  userId: string, 
+  userRole: UserRole,
+  partnerId: string,
+  caseId: string | null,
+  onSendMessage: () => void,
+  messageContent: string,
+  setMessageContent: (value: string) => void,
+  userCases: Case[]
+}) => {
+  const { messages, getUserById } = useData();
+  const partner = getUserById(partnerId);
+  
+  if (!partner) return null;
+  
+  const isCommunicationAllowed = canCommunicate(
+    userRole, 
+    partner.role, 
+    userId, 
+    partnerId,
+    userCases
+  );
+  
+  const conversation = messages
+    .filter(msg => 
+      (msg.senderId === userId && msg.recipientId === partnerId) ||
+      (msg.senderId === partnerId && msg.recipientId === userId)
+    )
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSendMessage();
+    }
+  };
+  
+  return (
+    <Card className="flex flex-col h-[calc(100vh-13rem)]">
+      <CardHeader className="pb-3 flex-shrink-0">
+        <div className="flex items-center space-x-3">
+          <Avatar>
+            <AvatarImage src={partner.avatarUrl} />
+            <AvatarFallback>{partner.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle>{partner.name}</CardTitle>
+            <CardDescription>{partner.role}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+        {!isCommunicationAllowed && (
+          <div className="flex justify-center my-4">
+            <div className="bg-red-50 text-red-800 px-4 py-3 rounded-md flex items-center space-x-2 max-w-md">
+              <AlertOctagon className="h-5 w-5 text-red-600" />
+              <p className="text-sm">
+                You are not authorized to communicate with this user.
+                Communication is restricted based on case assignments.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {conversation.length > 0 ? (
+          conversation.map(msg => {
+            const isIncoming = msg.senderId === partnerId;
+            const sender = getUserById(msg.senderId);
+            
+            return (
+              <div 
+                key={msg.id} 
+                className={`flex ${isIncoming ? 'justify-start' : 'justify-end'}`}
+              >
+                <div className={`
+                  max-w-[75%] p-3 rounded-lg
+                  ${isIncoming 
+                    ? 'bg-accent rounded-tl-none' 
+                    : 'bg-primary text-primary-foreground rounded-tr-none'}
+                `}>
+                  <p>{msg.content}</p>
+                  <p className={`text-xs mt-1 ${isIncoming ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
+                    {format(new Date(msg.createdAt), "h:mm a, MMM d")}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center p-4">
+              <MessageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">No messages yet</p>
+              <p className="text-sm text-muted-foreground">Start a conversation with {partner.name}</p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+      
+      <CardFooter className="border-t p-4">
+        <div className="flex w-full space-x-2">
+          <Textarea 
+            placeholder={isCommunicationAllowed 
+              ? "Type a message..." 
+              : "Communication is restricted"
+            }
+            className="min-h-[60px] flex-1"
+            value={messageContent}
+            onChange={(e) => setMessageContent(e.target.value)}
+            onKeyDown={handleKeyPress}
+            disabled={!isCommunicationAllowed}
+          />
+          <Button 
+            onClick={onSendMessage} 
+            className="self-end"
+            disabled={!isCommunicationAllowed}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+};
+
 const Messages = () => {
   const { user } = useAuth();
   const { messages, users, sendMessage, getUserById, cases, getCasesByUser } = useData();
@@ -435,157 +587,5 @@ const Messages = () => {
     </div>
   );
 };
-
-const MessageConversation = ({ 
-  userId, 
-  userRole,
-  partnerId, 
-  caseId,
-  onSendMessage,
-  messageContent,
-  setMessageContent,
-  userCases
-}: { 
-  userId: string, 
-  userRole: UserRole,
-  partnerId: string,
-  caseId: string | null,
-  onSendMessage: () => void,
-  messageContent: string,
-  setMessageContent: (value: string) => void,
-  userCases: Case[]
-}) => {
-  const { messages, getUserById } = useData();
-  const partner = getUserById(partnerId);
-  
-  if (!partner) return null;
-  
-  const isCommunicationAllowed = canCommunicate(
-    userRole, 
-    partner.role, 
-    userId, 
-    partnerId,
-    userCases
-  );
-  
-  const conversation = messages
-    .filter(msg => 
-      (msg.senderId === userId && msg.recipientId === partnerId) ||
-      (msg.senderId === partnerId && msg.recipientId === userId)
-    )
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      onSendMessage();
-    }
-  };
-  
-  return (
-    <Card className="flex flex-col h-[calc(100vh-13rem)]">
-      <CardHeader className="pb-3 flex-shrink-0">
-        <div className="flex items-center space-x-3">
-          <Avatar>
-            <AvatarImage src={partner.avatarUrl} />
-            <AvatarFallback>{partner.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <CardTitle>{partner.name}</CardTitle>
-            <CardDescription>{partner.role}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-        {!isCommunicationAllowed && (
-          <div className="flex justify-center my-4">
-            <div className="bg-red-50 text-red-800 px-4 py-3 rounded-md flex items-center space-x-2 max-w-md">
-              <AlertOctagon className="h-5 w-5 text-red-600" />
-              <p className="text-sm">
-                You are not authorized to communicate with this user.
-                Communication is restricted based on case assignments.
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {conversation.length > 0 ? (
-          conversation.map(msg => {
-            const isIncoming = msg.senderId === partnerId;
-            const sender = getUserById(msg.senderId);
-            
-            return (
-              <div 
-                key={msg.id} 
-                className={`flex ${isIncoming ? 'justify-start' : 'justify-end'}`}
-              >
-                <div className={`
-                  max-w-[75%] p-3 rounded-lg
-                  ${isIncoming 
-                    ? 'bg-accent rounded-tl-none' 
-                    : 'bg-primary text-primary-foreground rounded-tr-none'}
-                `}>
-                  <p>{msg.content}</p>
-                  <p className={`text-xs mt-1 ${isIncoming ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
-                    {format(new Date(msg.createdAt), "h:mm a, MMM d")}
-                  </p>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center p-4">
-              <MessageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">No messages yet</p>
-              <p className="text-sm text-muted-foreground">Start a conversation with {partner.name}</p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-      
-      <CardFooter className="border-t p-4">
-        <div className="flex w-full space-x-2">
-          <Textarea 
-            placeholder={isCommunicationAllowed 
-              ? "Type a message..." 
-              : "Communication is restricted"
-            }
-            className="min-h-[60px] flex-1"
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            onKeyDown={handleKeyPress}
-            disabled={!isCommunicationAllowed}
-          />
-          <Button 
-            onClick={onSendMessage} 
-            className="self-end"
-            disabled={!isCommunicationAllowed}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
-  );
-};
-
-const MessageIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-);
 
 export default Messages;
