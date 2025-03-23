@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, UserRole } from '@/types';
@@ -20,20 +19,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for active session
     const initializeAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setLoading(true);
 
       if (session) {
-        // Get user data from local storage or Supabase
         try {
           const storedUserData = localStorage.getItem('courtwise_user');
           if (storedUserData) {
             const userData = JSON.parse(storedUserData);
             setUser(userData);
           } else {
-            // Fallback to fetch from Supabase if local storage is empty
             const { data: profileData } = await supabase
               .from('profiles')
               .select('*')
@@ -47,7 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: profileData.email,
                 role: profileData.role as UserRole,
                 avatarUrl: profileData.avatar_url,
-                // Additional properties would be included here
               };
               setUser(userData);
               localStorage.setItem('courtwise_user', JSON.stringify(userData));
@@ -60,11 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     };
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          // Get user profile from Supabase
           try {
             const { data: profileData } = await supabase
               .from('profiles')
@@ -79,7 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: profileData.email,
                 role: profileData.role as UserRole,
                 avatarUrl: profileData.avatar_url,
-                // Add other profile fields here
               };
               setUser(userData);
               localStorage.setItem('courtwise_user', JSON.stringify(userData));
@@ -96,7 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
@@ -104,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Use signIn instead of signInWithPassword to match the mock implementation
       const { data, error } = await supabase.auth.signIn({ 
         email, 
         password 
@@ -123,15 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, userData: Partial<User>) => {
     try {
-      // Create meta object with only the properties from User type
       const userMeta: Record<string, any> = {
         name: userData.name,
         role: userData.role,
       };
       
-      // Add specialized fields based on role without using direct property access
       if (userData.role === 'lawyer') {
-        // Use a type assertion to let TypeScript know these properties exist
         const lawyerData = userData as any;
         if (lawyerData.specialization) userMeta.specialization = lawyerData.specialization;
         if (lawyerData.barId) userMeta.barId = lawyerData.barId;
@@ -149,10 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const { data, error } = await supabase.auth.signUp({ 
         email, 
-        password,
-        options: {
-          data: userMeta
-        }
+        password
       });
       
       if (error) {
@@ -176,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // New function to update user profile
   const updateUser = (userData: User) => {
     setUser(userData);
     localStorage.setItem('courtwise_user', JSON.stringify(userData));
