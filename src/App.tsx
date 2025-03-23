@@ -14,7 +14,7 @@ import MainLayout from "./components/layout/MainLayout";
 import { AuthProvider } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
 
-// New page imports
+// Page imports
 import Messages from "./pages/Messages";
 import Hearings from "./pages/Hearings";
 import Clients from "./pages/Clients";
@@ -25,6 +25,7 @@ import Schedule from "./pages/Schedule";
 import CaseSummary from "./pages/CaseSummary";
 import NewCases from "./pages/NewCases";
 import FileCasePage from "./pages/FileCasePage";
+import ProfileEdit from "./pages/ProfileEdit";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
               {/* Protected Routes */}
               <Route path="/" element={<MainLayout />}>
                 <Route path="dashboard" element={<Dashboard />} />
+                <Route path="profile/edit" element={<ProfileEdit />} />
                 
                 {/* Case Management */}
                 <Route path="cases" element={<Cases />} />

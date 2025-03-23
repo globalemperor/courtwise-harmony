@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
@@ -35,6 +36,9 @@ const formSchema = z.object({
   clientId: z.string().min(1, "Client must be selected"),
   caseType: z.string().min(1, "Case type must be selected"),
   defendantName: z.string().min(2, "Defendant name is required"),
+  defendantPhone: z.string().min(10, "Valid phone number is required"),
+  defendantIdType: z.string().min(1, "ID type must be selected"),
+  defendantIdNumber: z.string().min(1, "ID number is required"),
   defendantLawyer: z.string().optional(),
   courtId: z.string().min(1, "Court must be selected"),
   evidence: z.string().optional(),
@@ -51,6 +55,15 @@ const caseTypes = [
   "Real Estate",
   "Tax",
   "Employment",
+];
+
+const idTypes = [
+  "Aadhar Card",
+  "Passport",
+  "PAN Card",
+  "Voter ID",
+  "Driving License",
+  "Other Government ID"
 ];
 
 const FileCasePage = () => {
@@ -78,6 +91,9 @@ const FileCasePage = () => {
       clientId: "",
       caseType: "",
       defendantName: "",
+      defendantPhone: "",
+      defendantIdType: "",
+      defendantIdNumber: "",
       defendantLawyer: "",
       courtId: "",
       evidence: "",
@@ -99,14 +115,21 @@ const FileCasePage = () => {
         lawyerId: user.id,
         filedDate: new Date().toISOString(),
         courtRoom: "To be assigned",
-        judgeName: "To be assigned"
+        judgeName: "To be assigned",
+        defendantInfo: {
+          name: values.defendantName,
+          phone: values.defendantPhone,
+          idType: values.defendantIdType,
+          idNumber: values.defendantIdNumber,
+          lawyer: values.defendantLawyer || "Not specified"
+        }
       });
       
       const selectedClerk = clerks.length > 0 ? clerks[0] : null;
       
       if (selectedClerk) {
         await sendMessage({
-          content: `A new case "${values.title}" has been filed by ${user.name} and needs processing. Details: ${values.description}. Defendant: ${values.defendantName}. Defendant's lawyer: ${values.defendantLawyer || "Not provided"}. Case type: ${values.caseType}.`,
+          content: `A new case "${values.title}" has been filed by ${user.name} and needs processing. Details: ${values.description}. Defendant: ${values.defendantName} (${values.defendantPhone}). Defendant's ID: ${values.defendantIdType} ${values.defendantIdNumber}. Defendant's lawyer: ${values.defendantLawyer || "Not provided"}. Case type: ${values.caseType}.`,
           senderId: user.id,
           senderRole: "lawyer",
           recipientId: selectedClerk.id,
@@ -297,6 +320,8 @@ const FileCasePage = () => {
                 />
               </div>
 
+              <h3 className="text-lg font-semibold pt-2">Defendant Information</h3>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -314,18 +339,76 @@ const FileCasePage = () => {
 
                 <FormField
                   control={form.control}
-                  name="defendantLawyer"
+                  name="defendantPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Defendant's Lawyer (Optional)</FormLabel>
+                      <FormLabel>Defendant Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter defendant's lawyer if known" {...field} />
+                        <Input placeholder="Enter defendant's contact number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="defendantIdType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ID Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select ID type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {idTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="defendantIdNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ID Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter defendant's ID number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="defendantLawyer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Defendant's Lawyer (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter defendant's lawyer if known" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
