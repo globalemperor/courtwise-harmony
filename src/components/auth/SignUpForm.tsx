@@ -121,12 +121,42 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
     setIsLoading(true);
     try {
       const { name, email, password } = data;
-      await signup(name, email, password, role);
-      navigate("/dashboard");
-      toast({
-        title: "Account created",
-        description: "Welcome to CourtWise!",
-      });
+      const userData = {
+        name,
+        role,
+        // Add other profile fields based on role
+        ...(role === 'lawyer' && { 
+          barId: data.barId,
+          yearsOfExperience: data.yearsOfExperience,
+          specialization: data.specialization 
+        }),
+        ...(role === 'clerk' && { 
+          courtId: data.courtId,
+          department: data.department 
+        }),
+        ...(role === 'judge' && { 
+          chamberNumber: data.chamberNumber,
+          courtDistrict: data.courtDistrict,
+          yearsOnBench: data.yearsOnBench 
+        })
+      };
+      
+      const { error } = await signup(email, password, userData);
+      
+      if (error) {
+        toast({
+          title: "Signup failed",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      } else {
+        navigate("/dashboard");
+        toast({
+          title: "Account created",
+          description: "Welcome to CourtWise!",
+        });
+      }
     } catch (error) {
       toast({
         title: "Signup failed",

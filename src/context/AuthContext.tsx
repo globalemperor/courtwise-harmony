@@ -104,7 +104,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signIn({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
       
       if (error) {
         return { error };
@@ -127,6 +130,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: userData.name,
             role: userData.role,
             // Add other metadata as needed
+            ...(userData.specialization && { specialization: userData.specialization }),
+            ...(userData.barId && { barId: userData.barId }),
+            ...(userData.yearsOfExperience && { yearsOfExperience: userData.yearsOfExperience }),
+            ...(userData.courtId && { courtId: userData.courtId }),
+            ...(userData.department && { department: userData.department }),
+            ...(userData.chamberNumber && { chamberNumber: userData.chamberNumber }),
+            ...(userData.courtDistrict && { courtDistrict: userData.courtDistrict }),
+            ...(userData.yearsOnBench && { yearsOnBench: userData.yearsOnBench })
           }
         }
       });

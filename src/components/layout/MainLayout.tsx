@@ -1,11 +1,13 @@
 
-import { Sidebar } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate, Outlet } from "react-router-dom";
+import { useState } from "react";
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useAuth();
+  const [sidebarShown, setSidebarShown] = useState(true);
 
   if (loading) {
     return (
@@ -21,8 +23,8 @@ const MainLayout = () => {
 
   return (
     <div className="court-layout">
-      <Sidebar />
-      <main className="court-main">
+      <Sidebar shown={sidebarShown} setShown={setSidebarShown} />
+      <main className={`court-main ${!sidebarShown ? 'expanded' : ''}`}>
         <Outlet />
       </main>
       <Toaster />

@@ -129,7 +129,17 @@ export const SignInForm = ({ role }: SignInFormProps) => {
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      await login(data.email, data.password, role);
+      const { error } = await login(data.email, data.password);
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message || "Please check your credentials and try again",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       console.error("Login error:", error);
       setIsLoading(false);
