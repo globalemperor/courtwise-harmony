@@ -211,7 +211,15 @@ const MessageConversation = ({
 
 const Messages = () => {
   const { user } = useAuth();
-  const { messages, users, sendMessage, getUserById, cases, getCasesByUser } = useData();
+  const { 
+    messages, 
+    users, 
+    sendMessage, 
+    getUserById, 
+    cases, 
+    getCasesByUser,
+    getCaseById 
+  } = useData();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const caseIdFromUrl = searchParams.get('case');
