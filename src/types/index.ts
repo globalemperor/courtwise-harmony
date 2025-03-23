@@ -14,6 +14,7 @@ export interface User {
     type: string;
     number: string;
   };
+  password?: string; // Add password as an optional property
 }
 
 export type CaseStatus = 

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import clerksData from '@/data/users_clerks.json';
@@ -18,7 +17,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to get all users from all JSON files
 const getAllUsers = () => {
   const typedClerksData = clerksData.map(clerk => ({
     ...clerk,
@@ -55,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       setLoading(true);
-      // Check for user in localStorage
       const storedSession = localStorage.getItem('courtwise_session');
       
       if (storedSession) {
@@ -67,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userData = JSON.parse(storedUserData);
             setUser(userData);
           } else {
-            // If we have a session but no user data, find the user in our JSON files
             const allUsers = getAllUsers();
             const userFromJson = allUsers.find(u => u.id === session.user.id);
             
@@ -91,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Find user in JSON data
       const allUsers = getAllUsers();
       const user = allUsers.find(u => u.email === email && u.password === password);
       
@@ -99,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: { message: "Invalid login credentials" } };
       }
       
-      // Create a session
       const session = {
         user: {
           id: user.id,
@@ -123,7 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, userData: Partial<User>) => {
     try {
-      // Check if email already exists
       const allUsers = getAllUsers();
       const existingUser = allUsers.find(u => u.email === email);
       
@@ -131,17 +124,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: { message: "Email already in use" } };
       }
       
-      // Create new user object
       const newUser: User = {
         id: `user_${Date.now()}`,
         email,
-        password, // In a real app, this would be hashed
+        password,
         name: userData.name || email.split('@')[0],
         role: userData.role || 'client',
         avatarUrl: userData.avatarUrl || `https://ui-avatars.com/api/?name=${userData.name || email.split('@')[0]}&background=random`,
       };
       
-      // Add role-specific fields if provided
       if (userData.role === 'lawyer') {
         const lawyerData = userData as any;
         if (lawyerData.specialization) (newUser as any).specialization = lawyerData.specialization;
@@ -158,14 +149,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (judgeData.yearsOnBench) (newUser as any).yearsOnBench = judgeData.yearsOnBench;
       }
       
-      // In a real app, we would save this to a database
-      // For now, we'll just store it in localStorage
       const existingUsersKey = `courtwise_users_${newUser.role}s`;
       const existingUsers = JSON.parse(localStorage.getItem(existingUsersKey) || '[]');
       existingUsers.push(newUser);
       localStorage.setItem(existingUsersKey, JSON.stringify(existingUsers));
       
-      // Create a session
       const session = {
         user: {
           id: newUser.id,
@@ -201,7 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
     localStorage.setItem('courtwise_user', JSON.stringify(userData));
     
-    // Also update in the role-specific storage
     const usersKey = `courtwise_users_${userData.role}s`;
     try {
       const users = JSON.parse(localStorage.getItem(usersKey) || '[]');
