@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
@@ -78,7 +79,9 @@ const MessageConversation = ({
   onSendMessage,
   messageContent,
   setMessageContent,
-  userCases
+  userCases,
+  messages,
+  getUserById
 }: { 
   userId: string, 
   userRole: UserRole,
@@ -87,9 +90,10 @@ const MessageConversation = ({
   onSendMessage: () => void,
   messageContent: string,
   setMessageContent: (value: string) => void,
-  userCases: Case[]
+  userCases: Case[],
+  messages: any[],
+  getUserById: (id: string) => any
 }) => {
-  const { messages, getUserById } = useData();
   const partner = getUserById(partnerId);
   
   if (!partner) return null;
@@ -222,7 +226,6 @@ const Messages = () => {
 
   useEffect(() => {
     if (caseIdFromUrl && user) {
-      const { getCaseById, getUserById } = useData();
       const caseDetail = getCaseById(caseIdFromUrl);
       
       if (caseDetail) {
@@ -234,7 +237,7 @@ const Messages = () => {
         setSelectedCaseId(caseIdFromUrl);
       }
     }
-  }, [caseIdFromUrl, user]);
+  }, [caseIdFromUrl, user, getCaseById]);
 
   if (!user) return null;
 
@@ -565,6 +568,8 @@ const Messages = () => {
               messageContent={messageContent}
               setMessageContent={setMessageContent}
               userCases={userCases}
+              messages={messages}
+              getUserById={getUserById}
             />
           ) : (
             <Card>
