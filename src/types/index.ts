@@ -1,3 +1,4 @@
+
 // Original user types
 export type UserRole = 'client' | 'lawyer' | 'clerk' | 'judge';
 
@@ -51,6 +52,7 @@ export interface Case {
     idType: string;
     idNumber: string;
   };
+  judgement?: Judgement; // Add judgement property to the Case interface
 }
 
 export interface Message {

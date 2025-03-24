@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Scales } from "lucide-react";
+import { AlertTriangle, Scale } from "lucide-react";
 
 interface JudgementFormProps {
   caseId: string;
@@ -125,7 +125,7 @@ export function JudgementForm({ caseId, onJudgementSubmit }: JudgementFormProps)
         <Dialog>
           <DialogTrigger asChild>
             <Button disabled={!ruling || !courtRoomNumber || !inCourtConfirmation}>
-              <Scales className="h-4 w-4 mr-2" />
+              <Scale className="h-4 w-4 mr-2" />
               Issue Judgement
             </Button>
           </DialogTrigger>
