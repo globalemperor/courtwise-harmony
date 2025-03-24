@@ -41,6 +41,13 @@ const LawyerRoute = ({ children }: { children: React.ReactNode }) => {
 
 const queryClient = new QueryClient();
 
+// Test accounts information for easy reference:
+// Judge: judge@example.com / password
+// Clerk: clerk@example.com / password
+// Lawyer 1: lawyer@example.com / password
+// Lawyer 2: jennifer@example.com / password
+// Client: client@example.com / password
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>

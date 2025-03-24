@@ -1,12 +1,18 @@
-
+import { useState } from "react";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, MapPin, FileText, Gavel } from "lucide-react";
+import { Calendar, Clock, MapPin, FileText, Gavel, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 const CaseStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
@@ -27,8 +33,92 @@ const CaseStatusBadge = ({ status }: { status: string }) => {
   }
 };
 
+const RescheduleHearingDialog = ({ 
+  hearingId, 
+  currentDate, 
+  currentTime, 
+  onReschedule 
+}: { 
+  hearingId: string, 
+  currentDate: string, 
+  currentTime: string, 
+  onReschedule: (hearingId: string, date: string, time: string, reason: string) => void 
+}) => {
+  const [date, setDate] = useState(currentDate);
+  const [time, setTime] = useState(currentTime);
+  const [reason, setReason] = useState("");
+  const [open, setOpen] = useState(false);
+  
+  const handleReschedule = () => {
+    onReschedule(hearingId, date, time, reason);
+    setOpen(false);
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">Reschedule</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Reschedule Hearing</DialogTitle>
+          <DialogDescription>
+            Change the date and time for this hearing and provide a reason.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date" className="text-right">
+              Date
+            </Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="time" className="text-right">
+              Time
+            </Label>
+            <Input
+              id="time"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="reason" className="text-right">
+              Reason
+            </Label>
+            <Textarea
+              id="reason"
+              placeholder="Reason for rescheduling"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleReschedule} disabled={!date || !time || !reason}>
+            Reschedule Hearing
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const Docket = () => {
-  const { cases, hearings } = useData();
+  const { user } = useAuth();
+  const { cases, hearings, updateHearing, addReschedulingHistory } = useData();
+  const { toast } = useToast();
   
   // Group cases by status
   const activeCases = cases.filter(c => ['active', 'in_progress'].includes(c.status));
@@ -38,6 +128,29 @@ const Docket = () => {
   // Get today's hearings
   const today = new Date().toISOString().split('T')[0];
   const todaysHearings = hearings.filter(h => h.date === today);
+
+  const handleRescheduleHearing = (hearingId: string, date: string, time: string, reason: string) => {
+    // Update the hearing
+    updateHearing(hearingId, {
+      date,
+      time,
+      status: 'rescheduled'
+    });
+    
+    // Add to rescheduling history
+    addReschedulingHistory(hearingId, {
+      previousDate: today,
+      newDate: date,
+      reason,
+      judgeId: user?.id || '',
+      rescheduledAt: new Date().toISOString()
+    });
+    
+    toast({
+      title: "Hearing Rescheduled",
+      description: `Hearing has been rescheduled to ${date} at ${time}`,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -67,10 +180,26 @@ const Docket = () => {
                         <MapPin className="h-3 w-3 mx-1 text-muted-foreground" />
                         <span className="text-xs">{hearing.location}</span>
                       </div>
+                      {hearing.rescheduled && (
+                        <div className="flex items-center mt-1">
+                          <AlertTriangle className="h-3 w-3 mr-1 text-amber-500" />
+                          <span className="text-xs text-amber-500">Rescheduled</span>
+                        </div>
+                      )}
                     </div>
-                    <Button size="sm" asChild>
-                      <Link to={`/cases/${hearing.caseId}`}>View Case</Link>
-                    </Button>
+                    <div className="flex space-x-2">
+                      {user?.role === 'judge' && (
+                        <RescheduleHearingDialog 
+                          hearingId={hearing.id} 
+                          currentDate={hearing.date} 
+                          currentTime={hearing.time} 
+                          onReschedule={handleRescheduleHearing} 
+                        />
+                      )}
+                      <Button size="sm" asChild>
+                        <Link to={`/cases/${hearing.caseId}`}>View Case</Link>
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

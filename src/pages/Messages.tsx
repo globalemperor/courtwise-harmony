@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
@@ -8,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Search, PlusCircle, Send, User, Info, AlertOctagon } from "lucide-react";
+import { Search, PlusCircle, Send, User, Info, AlertOctagon, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSearchParams } from "react-router-dom";
 import { UserRole, Case } from "@/types";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const canCommunicate = (
   senderRole: UserRole,
@@ -223,12 +223,14 @@ const Messages = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const caseIdFromUrl = searchParams.get('case');
+  const recipientIdFromUrl = searchParams.get('recipient');
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [messageContent, setMessageContent] = useState("");
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(caseIdFromUrl);
   const [showNewMessageForm, setShowNewMessageForm] = useState(false);
+  const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
 
   const userCases = user ? getCasesByUser(user.id, user.role) : [];
 
@@ -245,7 +247,11 @@ const Messages = () => {
         setSelectedCaseId(caseIdFromUrl);
       }
     }
-  }, [caseIdFromUrl, user, getCaseById]);
+
+    if (recipientIdFromUrl) {
+      setSelectedUser(recipientIdFromUrl);
+    }
+  }, [caseIdFromUrl, recipientIdFromUrl, user, getCaseById]);
 
   if (!user) return null;
 
@@ -283,24 +289,68 @@ const Messages = () => {
 
   const allowedUserIds = getAllowedUsers();
 
-  const filteredConversationPartners = searchQuery
-    ? conversationPartners.filter(partnerId => {
+  const getFilteredUsers = () => {
+    let partners = conversationPartners.filter(partnerId => {
+      const partner = getUserById(partnerId);
+      return partner && allowedUserIds.includes(partner.id);
+    });
+
+    if (searchQuery) {
+      partners = partners.filter(partnerId => {
         const partner = getUserById(partnerId);
-        
-        if (partner && !allowedUserIds.includes(partner.id)) return false;
-        
         return partner && 
           (partner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
            partner.email.toLowerCase().includes(searchQuery.toLowerCase()));
-      })
-    : conversationPartners.filter(partnerId => {
-        const partner = getUserById(partnerId);
-        return partner && allowedUserIds.includes(partner.id);
       });
+    }
 
-  const potentialRecipients = users.filter(
-    u => allowedUserIds.includes(u.id) && !conversationPartners.includes(u.id)
-  );
+    if (userTypeFilter !== "all") {
+      partners = partners.filter(partnerId => {
+        const partner = getUserById(partnerId);
+        return partner && partner.role === userTypeFilter;
+      });
+    }
+
+    return partners;
+  };
+
+  const filteredConversationPartners = getFilteredUsers();
+
+  const getPotentialRecipients = () => {
+    let recipients = users.filter(
+      u => allowedUserIds.includes(u.id) && !conversationPartners.includes(u.id)
+    );
+
+    if (userTypeFilter !== "all") {
+      recipients = recipients.filter(u => u.role === userTypeFilter);
+    }
+
+    return recipients;
+  };
+
+  const potentialRecipients = getPotentialRecipients();
+
+  const getFilterOptions = () => {
+    const options = [{ value: "all", label: "All" }];
+    
+    if (user.role === 'clerk') {
+      options.push({ value: "judge", label: "Judges" });
+      options.push({ value: "lawyer", label: "Lawyers" });
+    } else if (user.role === 'judge') {
+      options.push({ value: "clerk", label: "Clerks" });
+      options.push({ value: "lawyer", label: "Lawyers" });
+    } else if (user.role === 'lawyer') {
+      options.push({ value: "client", label: "Clients" });
+      options.push({ value: "judge", label: "Judges" });
+      options.push({ value: "clerk", label: "Clerks" });
+    } else if (user.role === 'client') {
+      options.push({ value: "lawyer", label: "Lawyers" });
+    }
+    
+    return options;
+  };
+
+  const filterOptions = getFilterOptions();
 
   const handleSendMessage = async () => {
     if (!messageContent.trim() || !selectedUser) {
@@ -400,14 +450,37 @@ const Messages = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle>Conversations</CardTitle>
-              <div className="relative mt-2">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search conversations..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search conversations..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="text-sm mr-2">Filter:</span>
+                  <ToggleGroup 
+                    type="single" 
+                    value={userTypeFilter}
+                    onValueChange={(value) => value && setUserTypeFilter(value)}
+                    className="flex-wrap"
+                  >
+                    {filterOptions.map(option => (
+                      <ToggleGroupItem 
+                        key={option.value} 
+                        value={option.value}
+                        size="sm"
+                        className="text-xs"
+                      >
+                        {option.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -426,7 +499,7 @@ const Messages = () => {
                     return (
                       <div
                         key={partnerId}
-                        className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+                        className={`flex items-center space-x-3 p-2 rounded-md hover:bg-accent cursor-pointer ${selectedUser === partnerId ? 'bg-accent' : ''}`}
                         onClick={() => setSelectedUser(partnerId)}
                       >
                         <Avatar>
@@ -454,11 +527,11 @@ const Messages = () => {
                 <div className="py-8 text-center">
                   <User className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">
-                    {searchQuery 
-                      ? "No conversations match your search" 
+                    {searchQuery || userTypeFilter !== "all"
+                      ? "No conversations match your filters" 
                       : "No conversations yet"}
                   </p>
-                  {!searchQuery && !showNewMessageForm && (
+                  {!searchQuery && !showNewMessageForm && userTypeFilter === "all" && (
                     <Button 
                       variant="link" 
                       onClick={() => setShowNewMessageForm(true)}
@@ -482,6 +555,22 @@ const Messages = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">Recipient Type</label>
+                  <ToggleGroup 
+                    type="single" 
+                    value={userTypeFilter} 
+                    onValueChange={(value) => value && setUserTypeFilter(value)}
+                  >
+                    {filterOptions.map(option => (
+                      option.value !== "all" && (
+                        <ToggleGroupItem key={option.value} value={option.value}>
+                          {option.label}
+                        </ToggleGroupItem>
+                      )
+                    ))}
+                  </ToggleGroup>
+                </div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Recipient</label>
                   <Select 
                     value={selectedUser} 
@@ -499,6 +588,8 @@ const Messages = () => {
                           {filteredConversationPartners.map(partnerId => {
                             const partner = getUserById(partnerId);
                             if (!partner || !allowedUserIds.includes(partner.id)) return null;
+                            
+                            if (userTypeFilter !== "all" && partner.role !== userTypeFilter) return null;
                             
                             return (
                               <SelectItem key={`existing-${partner.id}`} value={partner.id}>

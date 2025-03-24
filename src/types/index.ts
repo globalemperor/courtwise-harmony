@@ -65,6 +65,23 @@ export interface Message {
   createdAt: string;
 }
 
+export interface Judgement {
+  decision: 'approved' | 'denied' | 'partial';
+  ruling: string;
+  issuedAt: string;
+  issuedBy: string;
+  judgeName: string;
+  courtRoomNumber: string;
+}
+
+export interface ReschedulingRecord {
+  previousDate: string;
+  newDate: string;
+  reason: string;
+  judgeId: string;
+  rescheduledAt: string;
+}
+
 export interface Hearing {
   id: string;
   caseId: string;
@@ -72,8 +89,11 @@ export interface Hearing {
   time: string;
   location: string;
   description: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-  summary?: string;
+  status: string;
+  participants?: string[];
+  notes?: string;
+  rescheduled?: boolean;
+  reschedulingHistory?: ReschedulingRecord[];
 }
 
 export interface Evidence {
