@@ -13,6 +13,10 @@ import clientLawyerChats from '@/data/chats_client_lawyer.json';
 import lawyerClerkChats from '@/data/chats_lawyer_clerk.json';
 import clerkJudgeChats from '@/data/chats_clerk_judge.json';
 
+// Import empty data for clean start
+import emptyUsers from '@/data/empty_users.json';
+import emptyCases from '@/data/empty_cases.json';
+
 // Define the context type
 export type DataContextType = {
   cases: Case[];
@@ -44,6 +48,10 @@ export type DataContextType = {
   updateHearing: (hearingId: string, updates: Partial<Hearing>) => void;
   createCase: (caseData: Partial<Case>) => Case;
   createCaseRequest: (requestData: any) => void;
+  // Add function to reset data to empty state
+  resetData: () => void;
+  useEmptyData: boolean;
+  setUseEmptyData: (value: boolean) => void;
 };
 
 // Create the context
@@ -97,26 +105,130 @@ const flattenChatData = (chatData: any[]): Message[] => {
 // Create the provider component
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const [useEmptyData, setUseEmptyData] = useState(() => {
+    // Check localStorage for preference
+    const storedPreference = localStorage.getItem('courtwise_use_empty_data');
+    return storedPreference === 'true';
+  });
   
-  // Initialize state with sample data
-  const [cases, setCases] = useState<Case[]>(casesData as Case[]);
-  const [users, setUsers] = useState<User[]>([
-    ...clientsData as User[],
-    ...lawyersData as User[],
-    ...judgesData as User[],
-    ...clerksData as User[]
-  ]);
+  // Initialize sample test users if using empty data
+  const testUsers: User[] = [
+    {
+      id: "test-client",
+      name: "Test Client",
+      email: "testclient@example.com",
+      password: "password",
+      role: "client",
+      avatarUrl: "https://ui-avatars.com/api/?name=Test+Client&background=blue"
+    },
+    {
+      id: "test-lawyer1",
+      name: "Test Lawyer 1",
+      email: "testlawyer1@example.com",
+      password: "password",
+      role: "lawyer",
+      avatarUrl: "https://ui-avatars.com/api/?name=Test+Lawyer&background=green",
+      barId: "TEST-BAR-1",
+      yearsOfExperience: "5",
+      specialization: "corporate"
+    },
+    {
+      id: "test-lawyer2",
+      name: "Test Lawyer 2",
+      email: "testlawyer2@example.com",
+      password: "password",
+      role: "lawyer",
+      avatarUrl: "https://ui-avatars.com/api/?name=Test+Lawyer+2&background=orange",
+      barId: "TEST-BAR-2",
+      yearsOfExperience: "8",
+      specialization: "criminal"
+    },
+    {
+      id: "test-judge",
+      name: "Test Judge",
+      email: "testjudge@example.com",
+      password: "password",
+      role: "judge",
+      avatarUrl: "https://ui-avatars.com/api/?name=Test+Judge&background=red",
+      chamberNumber: "TEST-101",
+      courtDistrict: "Test District",
+      yearsOnBench: "10"
+    },
+    {
+      id: "test-clerk",
+      name: "Test Clerk",
+      email: "testclerk@example.com",
+      password: "password",
+      role: "clerk",
+      avatarUrl: "https://ui-avatars.com/api/?name=Test+Clerk&background=purple",
+      courtId: "TEST-COURT-1",
+      department: "Test Department"
+    }
+  ];
+  
+  // Initialize state with sample data or empty data based on preference
+  const [cases, setCases] = useState<Case[]>(useEmptyData ? emptyCases as Case[] : casesData as Case[]);
+  const [users, setUsers] = useState<User[]>(() => {
+    if (useEmptyData) {
+      return testUsers;
+    } else {
+      return [
+        ...clientsData as User[],
+        ...lawyersData as User[],
+        ...judgesData as User[],
+        ...clerksData as User[]
+      ];
+    }
+  });
   
   // Convert chat data to messages array
-  const [messages, setMessages] = useState<Message[]>([
-    ...flattenChatData(clientLawyerChats),
-    ...flattenChatData(lawyerClerkChats),
-    ...flattenChatData(clerkJudgeChats)
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (useEmptyData) {
+      return [];
+    } else {
+      return [
+        ...flattenChatData(clientLawyerChats),
+        ...flattenChatData(lawyerClerkChats),
+        ...flattenChatData(clerkJudgeChats)
+      ];
+    }
+  });
   
   const [hearings, setHearings] = useState<Hearing[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [caseRequests, setCaseRequests] = useState<any[]>([]);
+
+  // Reset data function
+  const resetData = () => {
+    const newUseEmptyData = !useEmptyData;
+    setUseEmptyData(newUseEmptyData);
+    localStorage.setItem('courtwise_use_empty_data', String(newUseEmptyData));
+    
+    if (newUseEmptyData) {
+      setCases(emptyCases as Case[]);
+      setUsers(testUsers);
+      setMessages([]);
+      setHearings([]);
+      setEvidence([]);
+      setCaseRequests([]);
+    } else {
+      setCases(casesData as Case[]);
+      setUsers([
+        ...clientsData as User[],
+        ...lawyersData as User[],
+        ...judgesData as User[],
+        ...clerksData as User[]
+      ]);
+      setMessages([
+        ...flattenChatData(clientLawyerChats),
+        ...flattenChatData(lawyerClerkChats),
+        ...flattenChatData(clerkJudgeChats)
+      ]);
+      setHearings([]);
+      setEvidence([]);
+      setCaseRequests([]);
+    }
+  };
 
   // Filter cases based on user role
   useEffect(() => {
@@ -369,7 +481,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getCasesByUser,
         updateHearing,
         createCase,
-        createCaseRequest
+        createCaseRequest,
+        // Add reset functions
+        resetData,
+        useEmptyData,
+        setUseEmptyData
       }}
     >
       {children}

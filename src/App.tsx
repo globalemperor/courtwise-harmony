@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
 import { AuthProvider } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
+import { useEffect } from "react";
+import setupTestEnvironment from "./utils/initialSetup";
 
 // New page imports
 import Messages from "./pages/Messages";
@@ -41,15 +43,11 @@ const LawyerRoute = ({ children }: { children: React.ReactNode }) => {
 
 const queryClient = new QueryClient();
 
-// Test accounts information for easy reference:
-// Judge: judge@example.com / password
-// Clerk: clerk@example.com / password
-// Lawyer 1: lawyer@example.com / password
-// Lawyer 2: jennifer@example.com / password
-// Client: client@example.com / password
+// Run the initial setup once on app load
+setupTestEnvironment();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const AppContent = () => {
+  return (
     <BrowserRouter>
       <AuthProvider>
         <DataProvider>
@@ -60,7 +58,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               
               {/* Auth routes */}
-              <Route path="/login" element={<Navigate to="/login/client" />} />
+              <Route path="/login" element={<Login />} />
               <Route path="/login/:role" element={<Login />} />
               <Route path="/login/signup" element={<Login />} />
               
@@ -102,12 +100,30 @@ const App = () => (
                 <Route path="new-cases" element={<NewCases />} />
               </Route>
               
+              {/* Help pages */}
+              <Route path="/help" element={<NotFound />} />
+              <Route path="/documentation" element={<NotFound />} />
+              <Route path="/guides" element={<NotFound />} />
+              <Route path="/faq" element={<NotFound />} />
+              
+              {/* Legal pages */}
+              <Route path="/terms" element={<NotFound />} />
+              <Route path="/privacy" element={<NotFound />} />
+              <Route path="/cookies" element={<NotFound />} />
+              <Route path="/gdpr" element={<NotFound />} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
         </DataProvider>
       </AuthProvider>
     </BrowserRouter>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppContent />
   </QueryClientProvider>
 );
 

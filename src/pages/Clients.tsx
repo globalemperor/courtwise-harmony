@@ -45,6 +45,11 @@ const Clients = () => {
           <Card className="col-span-full">
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">No clients found. Accept case requests to work with clients.</p>
+              <div className="flex justify-center mt-4">
+                <Button asChild variant="outline">
+                  <Link to="/case-requests">View Case Requests</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
