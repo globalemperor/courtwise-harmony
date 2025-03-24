@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { Case, CaseStatus, Evidence, Hearing, Message, ReschedulingRecord, User } from '@/types';
@@ -35,11 +36,63 @@ export type DataContextType = {
   getLawyerCaseRequests: (lawyerId: string) => any[];
   acceptCaseRequest: (requestId: string) => void;
   rejectCaseRequest: (requestId: string) => void;
-  addReschedulingHistory: (hearingId: string, record: ReschedulingRecord) => void; // Add this method
+  addReschedulingHistory: (hearingId: string, record: ReschedulingRecord) => void;
+  // Add missing functions
+  getUsersByRole: (role: string) => User[];
+  sendMessage: (message: Partial<Message>) => void;
+  getCasesByUser: (userId: string, role: string) => Case[];
+  updateHearing: (hearingId: string, updates: Partial<Hearing>) => void;
+  createCase: (caseData: Partial<Case>) => Case;
+  createCaseRequest: (requestData: any) => void;
 };
 
 // Create the context
 export const DataContext = createContext<DataContextType | undefined>(undefined);
+
+// Helper to flatten chat data to Message array
+const flattenChatData = (chatData: any[]): Message[] => {
+  const messages: Message[] = [];
+  
+  chatData.forEach(chat => {
+    chat.messages.forEach((msg: any) => {
+      // Extract user roles based on the chat type
+      let senderRole: 'client' | 'lawyer' | 'clerk' | 'judge' = 'client';
+      let recipientRole: 'client' | 'lawyer' | 'clerk' | 'judge' = 'lawyer';
+      
+      // Determine sender and recipient roles based on IDs
+      if (msg.senderId.startsWith('lawyer')) {
+        senderRole = 'lawyer';
+        recipientRole = chat.user1 === msg.senderId ? 'client' : 'clerk';
+      } else if (msg.senderId.startsWith('clerk')) {
+        senderRole = 'clerk';
+        recipientRole = chat.user1 === msg.senderId ? 'lawyer' : 'judge';
+      } else if (msg.senderId.startsWith('judge')) {
+        senderRole = 'judge';
+        recipientRole = 'clerk';
+      } else if (msg.senderId.startsWith('client')) {
+        senderRole = 'client';
+        recipientRole = 'lawyer';
+      }
+      
+      // Find the recipientId
+      const recipientId = msg.senderId === chat.user1 ? chat.user2 : chat.user1;
+      
+      messages.push({
+        id: msg.id,
+        senderId: msg.senderId,
+        senderRole,
+        recipientId,
+        recipientRole,
+        caseId: msg.caseId || undefined,
+        content: msg.content,
+        read: msg.read,
+        createdAt: msg.timestamp
+      });
+    });
+  });
+  
+  return messages;
+};
 
 // Create the provider component
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -53,11 +106,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ...judgesData as User[],
     ...clerksData as User[]
   ]);
+  
+  // Convert chat data to messages array
   const [messages, setMessages] = useState<Message[]>([
-    ...clientLawyerChats as Message[],
-    ...lawyerClerkChats as Message[],
-    ...clerkJudgeChats as Message[]
+    ...flattenChatData(clientLawyerChats),
+    ...flattenChatData(lawyerClerkChats),
+    ...flattenChatData(clerkJudgeChats)
   ]);
+  
   const [hearings, setHearings] = useState<Hearing[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [caseRequests, setCaseRequests] = useState<any[]>([]);
@@ -206,6 +262,82 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
   
+  // Add missing functions implementation
+  const getUsersByRole = (role: string) => {
+    return users.filter(u => u.role === role);
+  };
+  
+  const sendMessage = (messageData: Partial<Message>) => {
+    const newMessage: Message = {
+      id: `msg-${Date.now()}`,
+      senderId: messageData.senderId || '',
+      senderRole: messageData.senderRole || 'client',
+      recipientId: messageData.recipientId || '',
+      recipientRole: messageData.recipientRole || 'lawyer',
+      caseId: messageData.caseId,
+      content: messageData.content || '',
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    return newMessage;
+  };
+  
+  const getCasesByUser = (userId: string, role: string) => {
+    if (role === 'lawyer') {
+      return cases.filter(c => c.lawyerId === userId);
+    } else if (role === 'client') {
+      return cases.filter(c => c.clientId === userId);
+    } else if (role === 'judge') {
+      // Assume judgeName field contains judge ID
+      return cases.filter(c => c.judgeName === userId);
+    }
+    return [];
+  };
+  
+  const updateHearing = (hearingId: string, updates: Partial<Hearing>) => {
+    setHearings(prevHearings =>
+      prevHearings.map(h =>
+        h.id === hearingId ? { ...h, ...updates } : h
+      )
+    );
+  };
+  
+  const createCase = (caseData: Partial<Case>) => {
+    const newCase: Case = {
+      id: `case-${Date.now()}`,
+      title: caseData.title || '',
+      description: caseData.description || '',
+      caseNumber: caseData.caseNumber || `C-${Math.floor(10000 + Math.random() * 90000)}`,
+      status: caseData.status || 'pending',
+      clientId: caseData.clientId || '',
+      lawyerId: caseData.lawyerId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filedDate: caseData.filedDate || new Date().toISOString(),
+      nextHearingDate: caseData.nextHearingDate,
+      courtRoom: caseData.courtRoom,
+      judgeName: caseData.judgeName,
+      defendantInfo: caseData.defendantInfo
+    };
+    
+    setCases(prev => [...prev, newCase]);
+    return newCase;
+  };
+  
+  const createCaseRequest = (requestData: any) => {
+    const newRequest = {
+      id: `req-${Date.now()}`,
+      ...requestData,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+    
+    setCaseRequests(prev => [...prev, newRequest]);
+    return newRequest;
+  };
+  
   return (
     <DataContext.Provider
       value={{
@@ -230,7 +362,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getLawyerCaseRequests,
         acceptCaseRequest,
         rejectCaseRequest,
-        addReschedulingHistory, // Add this method to the context value
+        addReschedulingHistory,
+        // Add missing functions to context value
+        getUsersByRole,
+        sendMessage,
+        getCasesByUser,
+        updateHearing,
+        createCase,
+        createCaseRequest
       }}
     >
       {children}

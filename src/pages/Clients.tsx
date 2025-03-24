@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const Clients = () => {
   const { user } = useAuth();
-  const { users, getCasesByUser } = useData();
+  const { users, cases } = useData();
   
   if (!user || user.role !== 'lawyer') {
     return (
@@ -23,7 +23,7 @@ const Clients = () => {
   }
 
   // Get cases where this lawyer is assigned
-  const lawyerCases = getCasesByUser(user.id, 'lawyer');
+  const lawyerCases = cases.filter(c => c.lawyerId === user.id);
   
   // Get unique client IDs from those cases
   const clientIds = [...new Set(lawyerCases.map(c => c.clientId))];
@@ -49,8 +49,7 @@ const Clients = () => {
           </Card>
         ) : (
           lawyerClients.map(client => {
-            const clientCases = getCasesByUser(client.id, 'client')
-              .filter(c => c.lawyerId === user.id);
+            const clientCases = cases.filter(c => c.clientId === client.id && c.lawyerId === user.id);
             
             return (
               <Card key={client.id}>
