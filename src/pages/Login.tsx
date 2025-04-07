@@ -29,7 +29,6 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
-import { useData } from "@/context/DataContext";
 
 // Role icon component with dropdown
 const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown?: boolean }) => {
@@ -113,66 +112,6 @@ const getRoleTitle = (role: UserRole) => {
   }
 };
 
-const TestAccountsAlert = ({ role }: { role: UserRole }) => {
-  const { useEmptyData, setUseEmptyData } = useData();
-  const [displayMode, setDisplayMode] = useState(useEmptyData ? 'test' : 'demo');
-  
-  const handleModeChange = (mode: string) => {
-    setUseEmptyData(mode === 'test');
-    setDisplayMode(mode);
-  };
-  
-  const getTestAccount = () => {
-    switch (role) {
-      case 'client': return "testclient@example.com";
-      case 'lawyer': return "testlawyer1@example.com or testlawyer2@example.com";
-      case 'clerk': return "testclerk@example.com";
-      case 'judge': return "testjudge@example.com";
-      default: return "";
-    }
-  };
-  
-  const getDemoAccount = () => {
-    switch (role) {
-      case 'client': return "client@example.com";
-      case 'lawyer': return "lawyer@example.com or jennifer@example.com";
-      case 'clerk': return "clerk@example.com";
-      case 'judge': return "judge@example.com";
-      default: return "";
-    }
-  };
-  
-  return (
-    <div className="bg-gray-100 p-4 rounded-lg mb-4">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold flex items-center">
-          <Info className="h-4 w-4 mr-2 text-blue-500" />
-          Test Accounts
-        </h3>
-        <div className="flex space-x-2 text-sm">
-          <button 
-            className={`px-2 py-1 rounded ${displayMode === 'test' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => handleModeChange('test')}
-          >
-            Test Mode
-          </button>
-          <button 
-            className={`px-2 py-1 rounded ${displayMode === 'demo' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => handleModeChange('demo')}
-          >
-            Demo Mode
-          </button>
-        </div>
-      </div>
-      <p className="text-sm text-gray-600">
-        <span className="font-medium">Email:</span> {displayMode === 'test' ? getTestAccount() : getDemoAccount()}
-        <br />
-        <span className="font-medium">Password:</span> password
-      </p>
-    </div>
-  );
-};
-
 const Login = () => {
   const { isAuthenticated, loading } = useAuth();
   const [showAnimation, setShowAnimation] = useState(false);
@@ -236,46 +175,56 @@ const Login = () => {
                   <div className="space-y-4 mt-2 max-h-[60vh] overflow-y-auto pr-2">
                     <div className="border-b pb-3">
                       <h3 className="text-lg font-semibold mb-2">For Clients</h3>
-                      <ol className="list-decimal list-inside space-y-2 text-sm">
-                        <li>Sign up or log in as a client</li>
-                        <li>Browse available lawyers and send case requests</li>
-                        <li>Once connected with a lawyer, track your case progress</li>
-                        <li>Communicate directly with your lawyer through the messaging system</li>
-                        <li>Receive notifications about upcoming hearings and case updates</li>
-                      </ol>
+                      <ul className="space-y-1 text-sm">
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
+                          <span>Sign up with your details and government ID</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
+                          <span>Find and connect with lawyers for your case</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
+                          <span>Track progress and communicate securely</span>
+                        </li>
+                      </ul>
                     </div>
                     
                     <div className="border-b pb-3">
                       <h3 className="text-lg font-semibold mb-2">For Lawyers</h3>
-                      <ol className="list-decimal list-inside space-y-2 text-sm">
-                        <li>Sign up or log in as a lawyer</li>
-                        <li>View and accept client case requests</li>
-                        <li>File cases through the system</li>
-                        <li>Manage all your clients and cases from your dashboard</li>
-                        <li>Communicate with clients, clerks, and indirectly with judges</li>
-                      </ol>
+                      <ul className="space-y-1 text-sm">
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
+                          <span>Create your profile with credentials</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
+                          <span>Accept client cases and file documentation</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
+                          <span>Manage schedules and communicate with court officials</span>
+                        </li>
+                      </ul>
                     </div>
                     
                     <div className="border-b pb-3">
-                      <h3 className="text-lg font-semibold mb-2">For Clerks</h3>
-                      <ol className="list-decimal list-inside space-y-2 text-sm">
-                        <li>Sign up or log in as a court clerk</li>
-                        <li>Process new case filings</li>
-                        <li>Coordinate with lawyers and judges</li>
-                        <li>Manage court schedules and hearing assignments</li>
-                        <li>Maintain court records and documentation</li>
-                      </ol>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">For Judges</h3>
-                      <ol className="list-decimal list-inside space-y-2 text-sm">
-                        <li>Sign up or log in as a judge</li>
-                        <li>View your docket of assigned cases</li>
-                        <li>Schedule and reschedule hearings when necessary</li>
-                        <li>Review case details and submitted evidence</li>
-                        <li>Issue judgments and rulings directly through the platform</li>
-                      </ol>
+                      <h3 className="text-lg font-semibold mb-2">For Court Officials</h3>
+                      <ul className="space-y-1 text-sm">
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
+                          <span>Access cases and schedule hearings</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
+                          <span>Process filings and maintain court records</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
+                          <span>Issue judgments and update case statuses</span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </AlertDialogDescription>
@@ -300,9 +249,6 @@ const Login = () => {
           <h1 className="text-2xl font-bold">CourtWise</h1>
           <p className="text-muted-foreground">Court Case Management System</p>
         </div>
-        
-        {/* Test accounts info */}
-        <TestAccountsAlert role={validRole} />
         
         {isSignUp ? (
           <SignUpForm defaultRole={validRole} />

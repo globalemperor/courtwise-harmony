@@ -1,84 +1,123 @@
-
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserRole } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
 import { Gavel, User, UserCog, Scale, PenLine } from "lucide-react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const clientSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
+const clientSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    idType: z.string().min(1, "ID type is required"),
+    idNumber: z.string().min(1, "ID number is required"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
-const lawyerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-  barId: z.string().min(3, "Bar ID is required"),
-  yearsOfExperience: z.string().min(1, "Years of experience is required"),
-  specialization: z.string().optional(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
+const lawyerSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+    barId: z.string().min(3, "Bar ID is required"),
+    yearsOfExperience: z.string().min(1, "Years of experience is required"),
+    specialization: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
-const clerkSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-  courtId: z.string().min(3, "Court ID is required"),
-  department: z.string().optional(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
+const clerkSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+    courtId: z.string().min(3, "Court ID is required"),
+    department: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
-const judgeSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-  chamberNumber: z.string().min(1, "Chamber number is required"),
-  courtDistrict: z.string().min(2, "Court district is required"),
-  yearsOnBench: z.string().optional(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
+const judgeSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+    chamberNumber: z.string().min(1, "Chamber number is required"),
+    courtDistrict: z.string().min(2, "Court district is required"),
+    yearsOnBench: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 const getSchemaForRole = (role: UserRole) => {
   switch (role) {
-    case 'client': return clientSchema;
-    case 'lawyer': return lawyerSchema;
-    case 'clerk': return clerkSchema;
-    case 'judge': return judgeSchema;
-    default: return clientSchema;
+    case "client":
+      return clientSchema;
+    case "lawyer":
+      return lawyerSchema;
+    case "clerk":
+      return clerkSchema;
+    case "judge":
+      return judgeSchema;
+    default:
+      return clientSchema;
   }
 };
 
 const getRoleTitle = (role: UserRole) => {
   switch (role) {
-    case 'client': return "Client";
-    case 'lawyer': return "Lawyer";
-    case 'clerk': return "Clerk";
-    case 'judge': return "Judge";
+    case "client":
+      return "Client";
+    case "lawyer":
+      return "Lawyer";
+    case "clerk":
+      return "Clerk";
+    case "judge":
+      return "Judge";
   }
 };
 
@@ -92,7 +131,7 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
   const { signup } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const form = useForm({
     resolver: zodResolver(getSchemaForRole(role)),
     defaultValues: {
@@ -100,6 +139,9 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
       email: "",
       password: "",
       confirmPassword: "",
+      phone: "",
+      idType: "",
+      idNumber: "",
       barId: "",
       yearsOfExperience: "",
       specialization: "",
@@ -108,7 +150,7 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
       chamberNumber: "",
       courtDistrict: "",
       yearsOnBench: "",
-    }
+    },
   });
 
   const onRoleChange = (newRole: UserRole) => {
@@ -120,49 +162,44 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const { name, email, password } = data;
+      const { name, email, password, phone, idType, idNumber, ...rest } = data;
+
+      // Format the data to match the server's expectations
       const userData = {
-        name,
-        role,
-        // Add other profile fields based on role
-        ...(role === 'lawyer' && { 
-          barId: data.barId,
-          yearsOfExperience: data.yearsOfExperience,
-          specialization: data.specialization 
-        }),
-        ...(role === 'clerk' && { 
-          courtId: data.courtId,
-          department: data.department 
-        }),
-        ...(role === 'judge' && { 
-          chamberNumber: data.chamberNumber,
-          courtDistrict: data.courtDistrict,
-          yearsOnBench: data.yearsOnBench 
-        })
+        fullName: name,
+        email,
+        password,
+        phoneNumber: phone.replace(/\D/g, "").slice(-10), // Extract the last 10 digits
+        governmentIdType: idType.charAt(0).toUpperCase() + idType.slice(1), // Capitalize the first letter
+        governmentIdNumber: idNumber,
+        ...rest,
       };
-      
-      const { error } = await signup(email, password, userData);
-      
+
+      const { error } = await signup(email, password, { ...userData, role });
+
       if (error) {
         toast({
           title: "Signup failed",
           description: error.message || "Please try again",
           variant: "destructive",
         });
-        setIsLoading(false);
       } else {
-        navigate("/dashboard");
         toast({
           title: "Account created",
-          description: "Welcome to CourtWise!",
+          description: `${
+            role.charAt(0).toUpperCase() + role.slice(1)
+          } registered successfully.`,
         });
+        navigate("/login");
       }
     } catch (error) {
+      console.error("Signup error:", error);
       toast({
         title: "Signup failed",
-        description: (error as Error).message || "Please try again",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -170,7 +207,9 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
   return (
     <Card className="w-full max-w-lg shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Create an account</CardTitle>
+        <CardTitle className="text-2xl text-center">
+          Create an account
+        </CardTitle>
         <CardDescription className="text-center">
           Enter your information to create a new {getRoleTitle(role)} account
         </CardDescription>
@@ -237,7 +276,11 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@example.com" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="you@example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -252,7 +295,11 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -266,7 +313,11 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -274,7 +325,71 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
               />
             </div>
 
-            {role === 'lawyer' && (
+            {role === "client" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+91 9999999999" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="idType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Government ID Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select ID Type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Passport">Passport</SelectItem>
+                            <SelectItem value="Aadhar">Aadhar Card</SelectItem>
+                            <SelectItem value="Driving License">
+                              Driving License
+                            </SelectItem>
+                            <SelectItem value="Voter ID">Voter ID</SelectItem>
+                            <SelectItem value="PAN">PAN Card</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="idNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ID Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter ID Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+
+            {role === "lawyer" && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -322,7 +437,7 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
               </>
             )}
 
-            {role === 'clerk' && (
+            {role === "clerk" && (
               <>
                 <FormField
                   control={form.control}
@@ -354,7 +469,7 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
               </>
             )}
 
-            {role === 'judge' && (
+            {role === "judge" && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -404,18 +519,21 @@ export const SignUpForm = ({ defaultRole = "client" }: SignUpFormProps) => {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-court-blue hover:bg-court-blue-dark"
               disabled={isLoading}
             >
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
-            
+
             <div className="text-center w-full">
               <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link to={`/login/${role}`} className="text-court-blue hover:underline font-medium">
+                <Link
+                  to={`/login/${role}`}
+                  className="text-court-blue hover:underline font-medium"
+                >
                   Sign in as a {getRoleTitle(role)}
                 </Link>
               </p>

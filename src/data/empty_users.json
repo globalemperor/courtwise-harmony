@@ -1,2 +1,43 @@
 
-[]
+[
+  {
+    "id": "client1",
+    "name": "Sample Client",
+    "email": "client@example.com",
+    "password": "password",
+    "role": "client",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Sample+Client&background=blue"
+  },
+  {
+    "id": "lawyer1",
+    "name": "Sample Lawyer",
+    "email": "lawyer@example.com",
+    "password": "password",
+    "role": "lawyer",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Sample+Lawyer&background=green",
+    "barId": "BAR-12345",
+    "yearsOfExperience": "3",
+    "specialization": "family law"
+  },
+  {
+    "id": "judge1",
+    "name": "Sample Judge",
+    "email": "judge@example.com",
+    "password": "password",
+    "role": "judge",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Sample+Judge&background=red",
+    "chamberNumber": "101",
+    "courtDistrict": "Central District",
+    "yearsOnBench": "5"
+  },
+  {
+    "id": "clerk1",
+    "name": "Sample Clerk",
+    "email": "clerk@example.com",
+    "password": "password",
+    "role": "clerk",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Sample+Clerk&background=purple",
+    "courtId": "COURT-101",
+    "department": "Civil Division"
+  }
+]

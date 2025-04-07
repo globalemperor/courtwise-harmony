@@ -1,5 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { UserRole } from "@/types";
 import { useState } from "react";
@@ -7,22 +14,30 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Gavel, User, UserCog, Scale, PenLine } from "lucide-react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { handleLogin } from "@/components/auth/AuthForm";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -30,25 +45,31 @@ const loginSchema = z.object({
 });
 
 // Role icon component
-const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown?: boolean }) => {
+const RoleIcon = ({
+  role,
+  showDropdown = false,
+}: {
+  role: UserRole;
+  showDropdown?: boolean;
+}) => {
   const navigate = useNavigate();
-  
+
   let Icon, color;
-  
+
   switch (role) {
-    case 'client':
+    case "client":
       Icon = User;
       color = "text-blue-500";
       break;
-    case 'lawyer':
+    case "lawyer":
       Icon = Scale;
       color = "text-green-500";
       break;
-    case 'clerk':
+    case "clerk":
       Icon = UserCog;
       color = "text-purple-500";
       break;
-    case 'judge':
+    case "judge":
       Icon = Gavel;
       color = "text-red-500";
       break;
@@ -56,11 +77,11 @@ const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown
       Icon = User;
       color = "text-blue-500";
   }
-  
+
   if (!showDropdown) {
     return <Icon className={`h-10 w-10 ${color}`} />;
   }
-  
+
   return (
     <DropdownMenu>
       <TooltipProvider>
@@ -80,7 +101,7 @@ const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      
+
       <DropdownMenuContent align="center">
         <DropdownMenuItem onClick={() => navigate(`/login/client`)}>
           <User className="h-4 w-4 text-blue-500 mr-2" /> Client
@@ -101,10 +122,14 @@ const RoleIcon = ({ role, showDropdown = false }: { role: UserRole, showDropdown
 
 const getRoleTitle = (role: UserRole) => {
   switch (role) {
-    case 'client': return "Client";
-    case 'lawyer': return "Lawyer";
-    case 'clerk': return "Clerk";
-    case 'judge': return "Judge";
+    case "client":
+      return "Client";
+    case "lawyer":
+      return "Lawyer";
+    case "clerk":
+      return "Clerk";
+    case "judge":
+      return "Judge";
   }
 };
 
@@ -117,31 +142,44 @@ export const SignInForm = ({ role }: SignInFormProps) => {
   const { login } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-    }
+    },
   });
 
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      const { error } = await login(data.email, data.password);
-      if (error) {
+      const result = await handleLogin(data.email, data.password, role);
+      if (result.error) {
         toast({
           title: "Login failed",
-          description: error.message || "Please check your credentials and try again",
+          description:
+            result.error.message || "Invalid credentials. Please try again.",
           variant: "destructive",
         });
-        setIsLoading(false);
       } else {
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${
+            role.charAt(0).toUpperCase() + role.slice(1)
+          }!`,
+        });
+        localStorage.setItem("courtwise_session", JSON.stringify(result.data));
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -160,7 +198,8 @@ export const SignInForm = ({ role }: SignInFormProps) => {
         </div>
         <CardTitle className="text-2xl">{getRoleTitle(role)} Login</CardTitle>
         <CardDescription>
-          Enter your credentials to access your {getRoleTitle(role).toLowerCase()} account
+          Enter your credentials to access your{" "}
+          {getRoleTitle(role).toLowerCase()} account
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -191,11 +230,7 @@ export const SignInForm = ({ role }: SignInFormProps) => {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      {...field}
-                    />
+                    <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -206,18 +241,21 @@ export const SignInForm = ({ role }: SignInFormProps) => {
             />
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-court-blue hover:bg-court-blue-dark"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Login"}
             </Button>
-            
+
             <div className="text-center w-full">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link to={`/login/signup?role=${role}`} className="text-court-blue hover:underline font-medium">
+                <Link
+                  to={`/login/signup?role=${role}`}
+                  className="text-court-blue hover:underline font-medium"
+                >
                   Sign up as a {getRoleTitle(role)}
                 </Link>
               </p>

@@ -1,2 +1,39 @@
 
-[]
+[
+  {
+    "id": "case_001",
+    "title": "Smith vs Jones",
+    "description": "Property dispute between neighbors",
+    "caseNumber": "CV-2023-001",
+    "type": "civil",
+    "status": "pending",
+    "clientId": "client1",
+    "lawyerId": "lawyer1",
+    "judgeId": "judge1",
+    "createdAt": "2023-01-15T10:30:00Z",
+    "updatedAt": "2023-01-15T10:30:00Z",
+    "filingDate": "2023-01-15",
+    "nextHearingDate": "2023-02-25T09:00:00Z",
+    "documents": [
+      {
+        "id": "doc_001",
+        "name": "Initial Complaint",
+        "url": "https://example.com/doc1",
+        "uploadedBy": "lawyer1",
+        "uploadedAt": "2023-01-15T10:30:00Z"
+      }
+    ],
+    "parties": [
+      {
+        "id": "party_001",
+        "name": "John Smith",
+        "role": "plaintiff"
+      },
+      {
+        "id": "party_002",
+        "name": "Robert Jones",
+        "role": "defendant"
+      }
+    ]
+  }
+]
