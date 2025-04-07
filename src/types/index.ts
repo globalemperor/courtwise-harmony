@@ -1,110 +1,63 @@
-// Original user types
-export type UserRole = "client" | "lawyer" | "clerk" | "judge";
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatarUrl?: string;
-  phone?: string;
-  address?: string;
-  specialization?: string;
-  governmentId?: {
-    type: string;
-    number: string;
-  };
-  password?: string; // Add password as an optional property
-  // New lawyer-specific fields
-  licenseYear?: string;
-  casesHandled?: number;
-  casesWon?: number;
-  caseTypes?: string[];
-  // Add missing properties for different user roles
-  barId?: string; // For lawyers
-  yearsOfExperience?: string; // For lawyers
-  chamberNumber?: string; // For judges
-  courtDistrict?: string; // For judges
-  yearsOnBench?: string; // For judges
-  courtId?: string; // For clerks
-  department?: string; // For clerks
-}
-
-export type CaseStatus =
-  | "pending"
-  | "active"
-  | "scheduled"
-  | "in_progress"
-  | "on_hold"
-  | "dismissed"
-  | "closed";
+export type UserRole = "Client" | "Lawyer" | "Clerk" | "Judge";
 
 export interface Case {
   id: string;
   title: string;
   description: string;
-  caseNumber?: string; // Make caseNumber optional to accommodate empty_cases.json
-  status: CaseStatus;
+  caseNumber: string;
+  type: string;
+  status: string;
   clientId: string;
-  lawyerId?: string;
+  lawyerId: string;
+  judgeId: string;
   createdAt: string;
   updatedAt: string;
-  nextHearingDate?: string;
-  filedDate?: string;
-  courtRoom?: string;
-  judgeName?: string;
-  defendantInfo?: {
-    name: string;
-    contactNumber: string;
-    idType: string;
-    idNumber: string;
-  };
-  judgement?: Judgement;
-  // Add these fields to match empty_cases.json structure
-  type?: string;
-  judgeId?: string;
-  filingDate?: string;
-  documents?: Array<{
-    id: string;
-    name: string;
-    url: string;
-    uploadedBy: string;
-    uploadedAt: string;
-  }>;
-  parties?: Array<{
-    id: string;
-    name: string;
-    role: string;
-  }>;
+  filingDate: string;
+  nextHearingDate: string;
+  documents: Document[];
+  parties: Party[];
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  url: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface Party {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  avatarUrl?: string;
+  // Lawyer specific fields
+  barId?: string;
+  yearsOfExperience?: string;
+  specialization?: string;
+  // Judge specific fields
+  chamberNumber?: string;
+  courtDistrict?: string;
+  yearsOnBench?: string;
+  // Clerk specific fields
+  courtId?: string;
+  department?: string;
 }
 
 export interface Message {
   id: string;
   senderId: string;
-  senderRole: UserRole;
-  recipientId: string;
-  recipientRole: UserRole;
-  caseId?: string;
+  receiverId: string;
   content: string;
-  read: boolean;
-  createdAt: string;
-}
-
-export interface Judgement {
-  decision: "approved" | "denied" | "partial";
-  ruling: string;
-  issuedAt: string;
-  issuedBy: string;
-  judgeName: string;
-  courtRoomNumber: string;
-}
-
-export interface ReschedulingRecord {
-  previousDate: string;
-  newDate: string;
-  reason: string;
-  judgeId: string;
-  rescheduledAt: string;
+  timestamp: string;
 }
 
 export interface Hearing {
@@ -113,21 +66,6 @@ export interface Hearing {
   date: string;
   time: string;
   location: string;
+  judgeId: string;
   description: string;
-  status: string;
-  participants?: string[];
-  notes?: string;
-  rescheduled?: boolean;
-  reschedulingHistory?: ReschedulingRecord[];
-}
-
-export interface Evidence {
-  id: string;
-  caseId: string;
-  title: string;
-  description: string;
-  fileUrl?: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  fileType?: string;
 }
