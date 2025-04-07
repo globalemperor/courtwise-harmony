@@ -1,4 +1,3 @@
-
 import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
 import { useParams, Link } from "react-router-dom";
@@ -6,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Calendar, FileText, User, Users } from "lucide-react";
+import { MessageCircle, Calendar, FileText, User, Users, FileBarChart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Evidence, Hearing, Message } from "@/types";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const CaseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,8 +22,12 @@ export const CaseDetail = () => {
     getUserById, 
     getMessagesByCaseId, 
     getHearingsByCaseId, 
-    getEvidenceByCaseId
+    getEvidenceByCaseId,
+    getCasesByUserId
   } = useData();
+
+  const [selectedParty, setSelectedParty] = useState<{id: string, name: string, role: string} | null>(null);
+  const [showPartyHistory, setShowPartyHistory] = useState(false);
 
   if (!id || !user) return null;
 
@@ -46,6 +52,24 @@ export const CaseDetail = () => {
   };
 
   const statusColor = statusColors[caseItem.status] || statusColors.pending;
+
+  const pastCases = selectedParty ? getCasesByUserId(selectedParty.id) : [];
+
+  const defendantInfo = caseItem.defendantInfo;
+  
+  const parties = [
+    { id: client?.id || '', name: client?.name || 'Unknown Client', role: 'Plaintiff' },
+    { id: lawyer?.id || '', name: lawyer?.name || 'No Lawyer', role: 'Plaintiff\'s Lawyer' },
+  ];
+  
+  if (defendantInfo) {
+    parties.push({ id: 'defendant-' + caseItem.id, name: defendantInfo.name, role: 'Defendant' });
+  }
+  
+  const handlePartyClick = (party: {id: string, name: string, role: string}) => {
+    setSelectedParty(party);
+    setShowPartyHistory(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -119,31 +143,28 @@ export const CaseDetail = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarImage src={client?.avatarUrl} alt={client?.name} />
-                  <AvatarFallback>{client?.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{client?.name || "Unknown"}</p>
-                  <p className="text-xs text-muted-foreground">Client</p>
-                </div>
-              </div>
+              {parties.map((party) => (
+                party.id ? (
+                  <div key={party.id} className="flex items-center space-x-3">
+                    <Avatar>
+                      <AvatarFallback>{party.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <button 
+                        onClick={() => handlePartyClick(party)} 
+                        className="font-medium hover:text-primary hover:underline focus:outline-none"
+                      >
+                        {party.name}
+                      </button>
+                      <p className="text-xs text-muted-foreground">{party.role}</p>
+                    </div>
+                  </div>
+                ) : null
+              ))}
               
               <Separator />
               
-              {lawyer ? (
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage src={lawyer.avatarUrl} alt={lawyer.name} />
-                    <AvatarFallback>{lawyer.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{lawyer.name}</p>
-                    <p className="text-xs text-muted-foreground">Lawyer</p>
-                  </div>
-                </div>
-              ) : (
+              {!lawyer && user.role === 'client' && (
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                     <User className="h-5 w-5 text-muted-foreground" />
@@ -151,11 +172,7 @@ export const CaseDetail = () => {
                   <div>
                     <p className="font-medium">No Lawyer Assigned</p>
                     <p className="text-xs text-muted-foreground">
-                      {user.role === 'client' ? (
-                        <Link to="/find-lawyer" className="text-primary">Find a lawyer</Link>
-                      ) : (
-                        "Waiting for assignment"
-                      )}
+                      <Link to="/find-lawyer" className="text-primary">Find a lawyer</Link>
                     </p>
                   </div>
                 </div>
@@ -269,6 +286,57 @@ export const CaseDetail = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showPartyHistory} onOpenChange={setShowPartyHistory}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileBarChart className="h-5 w-5" />
+              Case History for {selectedParty?.name}
+              <Badge>{selectedParty?.role}</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {pastCases.length > 0 ? (
+              <div className="space-y-4">
+                {pastCases.map(caseItem => (
+                  <Card key={caseItem.id} className="overflow-hidden">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between">
+                        <CardTitle className="text-lg">{caseItem.title}</CardTitle>
+                        <Badge className={statusColors[caseItem.status] || ""}>{caseItem.status}</Badge>
+                      </div>
+                      <CardDescription>
+                        Case #{caseItem.caseNumber}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2">
+                      <p className="text-sm line-clamp-2">{caseItem.description}</p>
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {caseItem.filedDate 
+                            ? format(new Date(caseItem.filedDate), "MMM d, yyyy") 
+                            : "Not filed"}
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/cases/${caseItem.id}`}>
+                            View Case
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8">
+                <p className="text-muted-foreground">No previous cases found</p>
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -293,7 +361,7 @@ const HearingListItem = ({ hearing }: { hearing: Hearing }) => {
           <div className="flex items-center space-x-3 mt-2 text-sm">
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
-              <span>{format(new Date(hearing.date), "MMMM d, yyyy")}</span>
+              {format(new Date(hearing.date), "MMMM d, yyyy")}
             </div>
             <div className="flex items-center">
               <Badge variant="outline">{hearing.time}</Badge>

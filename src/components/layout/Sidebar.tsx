@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,7 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const toggleSidebar = () => {
@@ -63,9 +62,8 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
     <aside className={`
       court-sidebar bg-background h-screen flex flex-col border-r 
       transition-all duration-300 overflow-hidden
-      ${shown ? 'w-64' : 'w-16'}
+      ${shown ? 'w-64' : isMobile ? 'fixed -translate-x-full' : 'w-16'}
       ${isMobile ? 'fixed z-50 shadow-lg' : 'relative'}
-      ${isMobile && !shown ? '-translate-x-full' : 'translate-x-0'}
     `}>
       <div className="p-4 border-b flex justify-between items-center">
         <div className="flex items-center space-x-2">
@@ -74,6 +72,7 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
         <button 
           onClick={toggleSidebar}
           className="p-1 rounded-md hover:bg-accent"
+          aria-label={shown ? "Close sidebar" : "Open sidebar"}
         >
           {shown ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -113,18 +112,18 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
 
       <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         <NavLink to="/dashboard" className={getNavLinkClass}>
-          <LayoutDashboard size={20} />
+          <LayoutDashboard size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
           {renderLinkText("Dashboard")}
         </NavLink>
 
         {user?.role === 'client' && (
           <>
             <NavLink to="/cases" className={getNavLinkClass}>
-              <FileText size={20} />
+              <FileText size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("My Cases")}
             </NavLink>
             <NavLink to="/find-lawyer" className={getNavLinkClass}>
-              <Briefcase size={20} />
+              <Briefcase size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Find Lawyer")}
             </NavLink>
           </>
@@ -133,19 +132,19 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
         {user?.role === 'lawyer' && (
           <>
             <NavLink to="/cases" className={getNavLinkClass}>
-              <FileText size={20} />
+              <FileText size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Cases")}
             </NavLink>
             <NavLink to="/file-case" className={getNavLinkClass}>
-              <FileText size={20} />
+              <FileText size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("File a Case")}
             </NavLink>
             <NavLink to="/case-requests" className={getNavLinkClass}>
-              <UserCheck size={20} />
+              <UserCheck size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Case Requests")}
             </NavLink>
             <NavLink to="/clients" className={getNavLinkClass}>
-              <Users size={20} />
+              <Users size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Clients")}
             </NavLink>
           </>
@@ -154,11 +153,11 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
         {user?.role === 'clerk' && (
           <>
             <NavLink to="/new-cases" className={getNavLinkClass}>
-              <FileText size={20} />
+              <FileText size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("New Cases")}
             </NavLink>
             <NavLink to="/hearings" className={getNavLinkClass}>
-              <Calendar size={20} />
+              <Calendar size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Hearings")}
             </NavLink>
           </>
@@ -167,23 +166,23 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
         {user?.role === 'judge' && (
           <>
             <NavLink to="/docket" className={getNavLinkClass}>
-              <FileText size={20} />
+              <FileText size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("My Docket")}
             </NavLink>
             <NavLink to="/case-summary" className={getNavLinkClass}>
-              <Gavel size={20} />
+              <Gavel size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
               {renderLinkText("Case Summary")}
             </NavLink>
           </>
         )}
 
         <NavLink to="/messages" className={getNavLinkClass}>
-          <MessageSquare size={20} />
+          <MessageSquare size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
           {renderLinkText("Messages")}
         </NavLink>
 
         <NavLink to="/schedule" className={getNavLinkClass}>
-          <Calendar size={20} />
+          <Calendar size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
           {renderLinkText("Schedule")}
         </NavLink>
       </nav>
@@ -192,9 +191,9 @@ const Sidebar = ({ shown, setShown }: SidebarProps) => {
         <Button 
           variant="outline" 
           onClick={handleLogout}
-          className={`w-full ${!shown && !isMobile ? "px-2" : ""}`}
+          className={`w-full ${!shown && !isMobile ? "px-2 justify-center" : ""}`}
         >
-          <LogOut size={20} />
+          <LogOut size={20} className={!shown && !isMobile ? "mx-auto" : ""} />
           {(shown || isMobile) && <span className="ml-2">Logout</span>}
         </Button>
       </div>

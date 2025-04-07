@@ -1,380 +1,416 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format } from "date-fns";
-import { Check, X, UserPlus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose 
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { User } from "@/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { FileText, Users, UserPlus } from "lucide-react";
 
+// Mock case requests data structure
 interface CaseRequest {
   id: string;
   clientId: string;
-  clientName: string;
-  clientAvatar: string;
-  lawyerId?: string;
-  lawyerName?: string;
+  lawyerId: string;
   caseTitle: string;
   description: string;
-  requestDate: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: "pending" | "accepted" | "rejected";
+  type: "new_case" | "defense";
+  createdAt: string;
 }
-
-const INITIAL_CASE_REQUESTS: CaseRequest[] = [
-  {
-    id: "1",
-    clientId: "5",
-    clientName: "Michael Williams",
-    clientAvatar: "https://ui-avatars.com/api/?name=Michael+Williams&background=random",
-    caseTitle: "Property Dispute",
-    description: "Need legal assistance with a property boundary dispute with my neighbor.",
-    requestDate: "2023-06-18T12:30:00Z",
-    status: "pending"
-  },
-  {
-    id: "2",
-    clientId: "6",
-    clientName: "Sarah Johnson",
-    clientAvatar: "https://ui-avatars.com/api/?name=Sarah+Johnson&background=random",
-    caseTitle: "Divorce Filing",
-    description: "Looking for representation in my upcoming divorce proceedings.",
-    requestDate: "2023-06-20T09:15:00Z",
-    status: "pending"
-  }
-];
 
 const CaseRequests = () => {
   const { user } = useAuth();
-  const { acceptCaseRequest, rejectCaseRequest, getUsersByRole, getUserById, cases } = useData();
-  const [caseRequests, setCaseRequests] = useState<CaseRequest[]>([]);
-  const [newCaseTitle, setNewCaseTitle] = useState("");
-  const [newCaseDescription, setNewCaseDescription] = useState("");
-  const [selectedLawyerId, setSelectedLawyerId] = useState("");
   const { toast } = useToast();
-
-  useEffect(() => {
-    const storedRequests = localStorage.getItem('courtwise_caseRequests');
-    if (storedRequests) {
-      try {
-        const parsedRequests = JSON.parse(storedRequests);
-        if (Array.isArray(parsedRequests)) {
-          setCaseRequests(parsedRequests);
-        } else {
-          setCaseRequests([]);
-          localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
-        }
-      } catch (error) {
-        console.error("Error parsing case requests:", error);
-        setCaseRequests([]);
-        localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
-      }
-    } else {
-      setCaseRequests([]);
-      localStorage.setItem('courtwise_caseRequests', JSON.stringify([]));
+  const { users, cases } = useData();
+  const [selectedRequest, setSelectedRequest] = useState<CaseRequest | null>(null);
+  
+  // Mock case requests - would come from your DataContext in a real app
+  const [caseRequests, setCaseRequests] = useState<CaseRequest[]>([
+    {
+      id: "req1",
+      clientId: "client1",
+      lawyerId: "lawyer1",
+      caseTitle: "Personal Injury Claim",
+      description: "Seeking representation for a personal injury case following a car accident.",
+      status: "pending",
+      type: "new_case",
+      createdAt: "2023-08-18T09:30:00Z"
+    },
+    {
+      id: "req2",
+      clientId: "client2",
+      lawyerId: "lawyer1",
+      caseTitle: "Contract Dispute",
+      description: "Need help with a business contract dispute with a supplier.",
+      status: "pending",
+      type: "new_case",
+      createdAt: "2023-08-15T14:45:00Z"
+    },
+    {
+      id: "req3",
+      clientId: "client1",
+      lawyerId: "lawyer1",
+      caseTitle: "Defense: Smith vs Jones",
+      description: "I'm the defendant in a property dispute case and need representation.",
+      status: "pending",
+      type: "defense",
+      createdAt: "2023-08-10T11:20:00Z"
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('courtwise_caseRequests', JSON.stringify(caseRequests));
-  }, [caseRequests]);
-
-  const handleAccept = async (id: string) => {
-    try {
-      await acceptCaseRequest(id);
-      
-      setCaseRequests(prev => 
-        prev.map(request => 
-          request.id === id ? { ...request, status: "accepted" } : request
-        )
-      );
-      
-      toast({
-        title: "Case request accepted",
-        description: "The case has been added to your caseload.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error accepting case",
-        description: "There was a problem accepting the case request.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await rejectCaseRequest(id);
-      
-      setCaseRequests(prev => 
-        prev.map(request => 
-          request.id === id ? { ...request, status: "rejected" } : request
-        )
-      );
-      
-      toast({
-        title: "Case request rejected",
-        description: "The case request has been declined.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error rejecting case",
-        description: "There was a problem rejecting the case request.",
-        variant: "destructive"
-      });
-    }
+  ]);
+  
+  // Helper to get client data by ID
+  const getClientById = (clientId: string): User | undefined => {
+    return users.find(u => u.id === clientId);
   };
   
-  const handleCreateCaseRequest = () => {
-    if (!newCaseTitle || !newCaseDescription) {
-      toast({
-        title: "Missing information",
-        description: "Please fill out all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    let lawyerName;
-    if (selectedLawyerId) {
-      const selectedLawyer = getUserById(selectedLawyerId);
-      lawyerName = selectedLawyer?.name;
-    }
-    
-    const newRequest: CaseRequest = {
-      id: `${Date.now()}`,
-      clientId: user?.id || "",
-      clientName: user?.name || "",
-      clientAvatar: user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || "")}&background=random`,
-      lawyerId: selectedLawyerId || undefined,
-      lawyerName: lawyerName,
-      caseTitle: newCaseTitle,
-      description: newCaseDescription,
-      requestDate: new Date().toISOString(),
-      status: "pending"
-    };
-    
-    setCaseRequests(prev => [...prev, newRequest]);
+  // Handle accepting a case request
+  const handleAccept = (requestId: string) => {
+    setCaseRequests(prev => 
+      prev.map(req => 
+        req.id === requestId ? { ...req, status: "accepted" } : req
+      )
+    );
     
     toast({
-      title: "Case request created",
-      description: "Your legal assistance request has been submitted successfully.",
+      title: "Case Request Accepted",
+      description: "You have accepted the case request. It has been added to your active cases.",
     });
-    
-    setNewCaseTitle("");
-    setNewCaseDescription("");
-    setSelectedLawyerId("");
   };
-
-  const filteredRequests = caseRequests.filter(request => {
-    if (!user) return false;
+  
+  // Handle rejecting a case request
+  const handleReject = (requestId: string) => {
+    setCaseRequests(prev => 
+      prev.map(req => 
+        req.id === requestId ? { ...req, status: "rejected" } : req
+      )
+    );
     
-    if (user.role === 'lawyer') {
-      return request.lawyerId === user.id || !request.lawyerId;
-    } else if (user.role === 'client') {
-      return request.clientId === user.id;
-    } else {
-      return true;
-    }
-  });
-
+    toast({
+      title: "Case Request Rejected",
+      description: "You have rejected the case request.",
+    });
+  };
+  
+  // Filter requests by type and render
+  const newCaseRequests = caseRequests.filter(req => req.type === "new_case" && req.status === "pending");
+  const defenseRequests = caseRequests.filter(req => req.type === "defense" && req.status === "pending");
+  const acceptedRequests = caseRequests.filter(req => req.status === "accepted");
+  const rejectedRequests = caseRequests.filter(req => req.status === "rejected");
+  
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Case Requests</h1>
-          <p className="text-muted-foreground">
-            {user?.role === 'lawyer' 
-              ? "Review and respond to legal assistance requests" 
-              : "Submit and track requests for legal assistance"}
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Case Requests</h1>
+        <p className="text-muted-foreground">Manage incoming client requests for legal representation</p>
+      </div>
+      
+      <Tabs defaultValue="new" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="new">
+            New Cases{" "}
+            {newCaseRequests.length > 0 && (
+              <Badge variant="outline" className="ml-2">
+                {newCaseRequests.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="defense">
+            Defense Requests{" "}
+            {defenseRequests.length > 0 && (
+              <Badge variant="outline" className="ml-2">
+                {defenseRequests.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="accepted">Accepted</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        </TabsList>
         
-        {user?.role === 'client' && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="h-4 w-4 mr-2" /> Request Legal Help
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Request Legal Assistance</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Lawyer (Optional)</label>
-                  <select 
-                    className="w-full p-2 border rounded"
-                    value={selectedLawyerId}
-                    onChange={(e) => setSelectedLawyerId(e.target.value)}
-                  >
-                    <option value="">Any available lawyer</option>
-                    {getUsersByRole('lawyer').map(lawyer => (
-                      <option key={lawyer.id} value={lawyer.id}>
-                        {lawyer.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        <TabsContent value="new" className="mt-6">
+          {newCaseRequests.length > 0 ? (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {newCaseRequests.map(request => {
+                const client = getClientById(request.clientId);
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Case Title*</label>
-                  <Input
-                    value={newCaseTitle}
-                    onChange={(e) => setNewCaseTitle(e.target.value)}
-                    placeholder="e.g., Property Dispute, Divorce Filing"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description*</label>
-                  <Textarea
-                    value={newCaseDescription}
-                    onChange={(e) => setNewCaseDescription(e.target.value)}
-                    placeholder="Describe your legal matter in detail..."
-                    className="min-h-[100px]"
-                    required
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button onClick={handleCreateCaseRequest}>Submit Request</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      <div className="grid gap-4">
-        {filteredRequests.filter(request => request.status === "pending").length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">No pending case requests</p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredRequests
-            .filter(request => request.status === "pending")
-            .map(request => (
-              <Card key={request.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center space-x-2">
-                      <Avatar>
-                        <AvatarImage src={request.clientAvatar} />
-                        <AvatarFallback>{request.clientName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-lg">{request.caseTitle}</CardTitle>
-                        <div className="text-sm text-muted-foreground">
-                          From: {request.clientName}
+                return (
+                  <Card key={request.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle>{request.caseTitle}</CardTitle>
+                        <Badge>New Case</Badge>
+                      </div>
+                      <CardDescription>
+                        Requested on {new Date(request.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                          <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-muted-foreground">{client?.email}</p>
                         </div>
                       </div>
-                    </div>
-                    <Badge>New Request</Badge>
-                  </div>
-                </CardHeader>
+                      <p className="text-sm line-clamp-3">{request.description}</p>
+                    </CardContent>
+                    <CardFooter className="flex justify-between pt-0">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedRequest(request)}>View Details</Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                          <DialogHeader>
+                            <DialogTitle>{request.caseTitle}</DialogTitle>
+                            <DialogDescription>
+                              Case request from {client?.name} on {new Date(request.createdAt).toLocaleDateString()}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <ScrollArea className="h-[200px] rounded-md border p-4">
+                              <p>{request.description}</p>
+                            </ScrollArea>
+                            <div className="flex items-center space-x-3">
+                              <Avatar>
+                                <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                                <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{client?.name}</p>
+                                <p className="text-sm text-muted-foreground">{client?.email}</p>
+                                {client?.phone && <p className="text-sm text-muted-foreground">{client.phone}</p>}
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter className="space-x-2">
+                            <Button variant="outline" onClick={() => handleReject(request.id)}>
+                              Reject
+                            </Button>
+                            <Button onClick={() => handleAccept(request.id)}>
+                              Accept Case
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <div className="space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleReject(request.id)}>
+                          Reject
+                        </Button>
+                        <Button size="sm" onClick={() => handleAccept(request.id)}>
+                          Accept
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center p-10">
+              <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No new case requests</h3>
+              <p className="text-muted-foreground">
+                You don't have any pending requests for new cases at the moment.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="defense" className="mt-6">
+          {defenseRequests.length > 0 ? (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {defenseRequests.map(request => {
+                const client = getClientById(request.clientId);
                 
-                <CardContent>
-                  <p className="text-sm mb-2">{request.description}</p>
-                  <div className="text-xs text-muted-foreground">
-                    Requested on {format(new Date(request.requestDate), "PPP 'at' p")}
-                  </div>
-                </CardContent>
+                return (
+                  <Card key={request.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle>{request.caseTitle}</CardTitle>
+                        <Badge variant="secondary">Defense</Badge>
+                      </div>
+                      <CardDescription>
+                        Requested on {new Date(request.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                          <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-muted-foreground">{client?.email}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm line-clamp-3">{request.description}</p>
+                    </CardContent>
+                    <CardFooter className="flex justify-between pt-0">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedRequest(request)}>View Details</Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                          <DialogHeader>
+                            <DialogTitle>{request.caseTitle}</DialogTitle>
+                            <DialogDescription>
+                              Defense request from {client?.name} on {new Date(request.createdAt).toLocaleDateString()}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <ScrollArea className="h-[200px] rounded-md border p-4">
+                              <p>{request.description}</p>
+                            </ScrollArea>
+                            <div className="flex items-center space-x-3">
+                              <Avatar>
+                                <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                                <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{client?.name}</p>
+                                <p className="text-sm text-muted-foreground">{client?.email}</p>
+                                {client?.phone && <p className="text-sm text-muted-foreground">{client.phone}</p>}
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter className="space-x-2">
+                            <Button variant="outline" onClick={() => handleReject(request.id)}>
+                              Reject
+                            </Button>
+                            <Button onClick={() => handleAccept(request.id)}>
+                              Accept Case
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <div className="space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleReject(request.id)}>
+                          Reject
+                        </Button>
+                        <Button size="sm" onClick={() => handleAccept(request.id)}>
+                          Accept
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center p-10">
+              <Users className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No defense requests</h3>
+              <p className="text-muted-foreground">
+                You don't have any pending requests for defense representation at the moment.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="accepted" className="mt-6">
+          {acceptedRequests.length > 0 ? (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {acceptedRequests.map(request => {
+                const client = getClientById(request.clientId);
                 
-                <CardFooter className="flex justify-end space-x-2">
-                  {user?.role === 'lawyer' && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleReject(request.id)}
-                      >
-                        <X className="h-4 w-4 mr-1" /> Decline
+                return (
+                  <Card key={request.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle>{request.caseTitle}</CardTitle>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Accepted</Badge>
+                      </div>
+                      <CardDescription>
+                        Requested on {new Date(request.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                          <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-muted-foreground">{client?.email}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm line-clamp-3">{request.description}</p>
+                    </CardContent>
+                    <CardFooter className="pt-0">
+                      <Button asChild className="w-full">
+                        <a href="/cases">View in Active Cases</a>
                       </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleAccept(request.id)}
-                      >
-                        <Check className="h-4 w-4 mr-1" /> Accept
-                      </Button>
-                    </>
-                  )}
-                </CardFooter>
-              </Card>
-            ))
-        )}
-      </div>
-
-      {filteredRequests.some(request => request.status !== "pending") && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Past Requests</h2>
-          <div className="grid gap-4">
-            {filteredRequests
-              .filter(request => request.status !== "pending")
-              .map(request => (
-                <Card key={request.id} className={
-                  request.status === "accepted" 
-                    ? "border-l-4 border-l-green-500" 
-                    : "border-l-4 border-l-red-500"
-                }>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{request.caseTitle}</CardTitle>
-                        <div className="text-sm text-muted-foreground">
-                          From: {request.clientName}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center p-10">
+              <UserPlus className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No accepted requests</h3>
+              <p className="text-muted-foreground">
+                You haven't accepted any case requests yet.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="rejected" className="mt-6">
+          {rejectedRequests.length > 0 ? (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {rejectedRequests.map(request => {
+                const client = getClientById(request.clientId);
+                
+                return (
+                  <Card key={request.id} className="overflow-hidden hover:shadow-md transition-shadow opacity-70">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <CardTitle>{request.caseTitle}</CardTitle>
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>
+                      </div>
+                      <CardDescription>
+                        Requested on {new Date(request.createdAt).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarImage src={client?.avatarUrl} alt={client?.name} />
+                          <AvatarFallback>{client?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-muted-foreground">{client?.email}</p>
                         </div>
                       </div>
-                      <Badge variant={request.status === "accepted" ? "default" : "destructive"}>
-                        {request.status === "accepted" ? "Accepted" : "Rejected"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      {request.description}
-                    </p>
-                    {request.status === "accepted" && (
-                      <div className="mt-2 pt-2 border-t border-dashed">
-                        <p className="text-xs font-medium">Related cases:</p>
-                        <div className="mt-1">
-                          {cases
-                            .filter(c => 
-                              c.clientId === request.clientId && 
-                              c.title.includes(request.caseTitle)
-                            )
-                            .map(c => (
-                              <Badge key={c.id} variant="outline" className="mr-2 mb-1">
-                                {c.caseNumber}
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
-      )}
+                      <p className="text-sm line-clamp-3">{request.description}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center p-10">
+              <h3 className="text-lg font-medium">No rejected requests</h3>
+              <p className="text-muted-foreground">
+                You haven't rejected any case requests.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

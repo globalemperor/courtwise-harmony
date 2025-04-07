@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { Case, CaseStatus, Evidence, Hearing, Message, ReschedulingRecord, User } from '@/types';
@@ -41,14 +40,15 @@ export type DataContextType = {
   acceptCaseRequest: (requestId: string) => void;
   rejectCaseRequest: (requestId: string) => void;
   addReschedulingHistory: (hearingId: string, record: ReschedulingRecord) => void;
-  // Add missing functions
   getUsersByRole: (role: string) => User[];
   sendMessage: (message: Partial<Message>) => void;
   getCasesByUser: (userId: string, role: string) => Case[];
   updateHearing: (hearingId: string, updates: Partial<Hearing>) => void;
   createCase: (caseData: Partial<Case>) => Case;
   createCaseRequest: (requestData: any) => void;
-  // Add function to reset data to empty state
+  getCasesByUserId: (userId: string) => Case[];
+  getAcceptedLawyers: (clientId: string) => User[];
+  getAllLawyers: () => User[];
   resetData: () => void;
   useEmptyData: boolean;
   setUseEmptyData: (value: boolean) => void;
@@ -450,6 +450,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newRequest;
   };
   
+  // Add new functions needed based on errors
+  const getCasesByUserId = (userId: string) => {
+    return cases.filter(c => 
+      c.clientId === userId || 
+      c.lawyerId === userId || 
+      c.judgeName === userId || 
+      (c.defendantInfo && c.defendantInfo.name === userId)
+    );
+  };
+  
+  const getAcceptedLawyers = (clientId: string) => {
+    // Get all cases for this client
+    const clientCases = cases.filter(c => c.clientId === clientId);
+    
+    // Get unique lawyer IDs from these cases
+    const lawyerIds = [...new Set(clientCases
+      .map(c => c.lawyerId)
+      .filter(Boolean) as string[])];
+    
+    // Return lawyer users
+    return users.filter(u => lawyerIds.includes(u.id) && u.role === 'lawyer');
+  };
+  
+  const getAllLawyers = () => {
+    return users.filter(u => u.role === 'lawyer');
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -475,14 +502,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         acceptCaseRequest,
         rejectCaseRequest,
         addReschedulingHistory,
-        // Add missing functions to context value
         getUsersByRole,
         sendMessage,
         getCasesByUser,
         updateHearing,
         createCase,
         createCaseRequest,
-        // Add reset functions
+        getCasesByUserId,
+        getAcceptedLawyers,
+        getAllLawyers,
         resetData,
         useEmptyData,
         setUseEmptyData

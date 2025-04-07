@@ -1,3 +1,4 @@
+
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { SearchCases } from "@/components/cases/SearchCases";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -273,9 +275,12 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">{roleBasedTitle()}</h1>
-        <p className="text-muted-foreground">Welcome back, {user.name}</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">{roleBasedTitle()}</h1>
+          <p className="text-muted-foreground">Welcome back, {user.name}</p>
+        </div>
+        <SearchCases />
       </div>
 
       {/* Role-specific content */}

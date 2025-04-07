@@ -1,277 +1,575 @@
 
 import { useState } from "react";
-import { useData } from "@/context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-
-// Government ID types
-const GOV_ID_TYPES = [
-  { value: "aadhar", label: "Aadhar Card" },
-  { value: "passport", label: "Passport" },
-  { value: "pan", label: "PAN Card" },
-  { value: "voter", label: "Voter ID" },
-  { value: "driving", label: "Driving License" },
-];
-
-// Form schema with validation
-const formSchema = z.object({
-  title: z.string().min(5, { message: "Title must be at least 5 characters" }),
-  description: z.string().min(20, { message: "Description must be at least 20 characters" }),
-  caseType: z.string().min(1, { message: "Please select a case type" }),
-  defendant: z.object({
-    name: z.string().min(2, { message: "Defendant name is required" }),
-    contactNumber: z.string().min(10, { message: "Valid contact number is required" }),
-    govIdType: z.string().min(1, { message: "Please select an ID type" }),
-    govIdNumber: z.string().min(4, { message: "Government ID number is required" })
-  })
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useData } from "@/context/DataContext";
+import { PlaintiffSelector } from "@/components/cases/PlaintiffSelector";
+import { CaseStatus, User, Witness, EvidenceItem } from "@/types";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { FileUploader } from "@/components/cases/FileUploader";
+import { Trash2 } from "lucide-react";
 
 const FileCasePage = () => {
   const { user } = useAuth();
-  const { createCase, getUsersByRole } = useData();
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { createCase } = useData();
+  const [selectedPlaintiff, setSelectedPlaintiff] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState("details");
+  const [witnesses, setWitnesses] = useState<Witness[]>([]);
+  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
+  const [newWitness, setNewWitness] = useState<{
+    name: string;
+    contactNumber: string;
+    relation: string;
+    statement: string;
+  }>({
+    name: "",
+    contactNumber: "",
+    relation: "",
+    statement: "",
+  });
 
-  // Get all available lawyers
-  const lawyers = getUsersByRole("lawyer");
+  const formSchema = z.object({
+    title: z.string().min(5, { message: "Title must be at least 5 characters" }),
+    type: z.string().min(1, { message: "Please select a case type" }),
+    description: z.string().min(20, { message: "Description must be at least 20 characters" }),
+    court: z.string().min(1, { message: "Please select a court" }),
+    defendantName: z.string().min(2, { message: "Defendant name is required" }),
+    defendantContact: z.string().optional(),
+    defendantIdType: z.string().min(1, { message: "ID type is required" }),
+    defendantIdNumber: z.string().min(1, { message: "ID number is required" }),
+  });
 
-  // Initialize the form with react-hook-form and zod validation
-  const form = useForm<FormValues>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
+      type: "",
       description: "",
-      caseType: "",
-      defendant: {
-        name: "",
-        contactNumber: "",
-        govIdType: "",
-        govIdNumber: ""
-      }
-    }
+      court: "",
+      defendantName: "",
+      defendantContact: "",
+      defendantIdType: "",
+      defendantIdNumber: "",
+    },
   });
 
-  const onSubmit = async (data: FormValues) => {
-    if (!user) {
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!selectedPlaintiff) {
       toast({
-        title: "Authentication required",
-        description: "You must be logged in to file a case",
+        title: "Error",
+        description: "Please select a plaintiff for this case",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      // Format defendant info to include in the case
-      const defendantInfo = {
-        name: data.defendant.name,
-        contactNumber: data.defendant.contactNumber,
-        idType: data.defendant.govIdType,
-        idNumber: data.defendant.govIdNumber
-      };
+    const newCase = {
+      id: `case_${Date.now()}`,
+      title: values.title,
+      description: values.description,
+      clientId: selectedPlaintiff.id,
+      lawyerId: user?.id,
+      status: "pending" as CaseStatus,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      type: values.type,
+      filedDate: new Date().toISOString().split('T')[0],
+      courtRoom: values.court,
+      defendantInfo: {
+        name: values.defendantName,
+        contactNumber: values.defendantContact || "",
+        idType: values.defendantIdType,
+        idNumber: values.defendantIdNumber,
+      },
+      witnesses: witnesses,
+      evidence: evidenceItems,
+    };
 
-      // Create the case
-      const newCase = await createCase({
-        title: data.title,
-        description: `${data.description}\n\nDefendant Information:\nName: ${defendantInfo.name}\nContact: ${defendantInfo.contactNumber}\nID Type: ${defendantInfo.idType}\nID Number: ${defendantInfo.idNumber}`,
-        caseNumber: `CV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-        status: "pending",
-        clientId: user.id,
-        filedDate: new Date().toISOString(),
+    createCase(newCase);
+
+    toast({
+      title: "Case Filed Successfully",
+      description: "The new case has been filed and is pending review",
+    });
+
+    navigate("/cases");
+  };
+
+  const addWitness = () => {
+    if (newWitness.name && newWitness.contactNumber && newWitness.relation) {
+      setWitnesses([...witnesses, { ...newWitness }]);
+      setNewWitness({
+        name: "",
+        contactNumber: "",
+        relation: "",
+        statement: "",
       });
-
+    } else {
       toast({
-        title: "Case filed successfully",
-        description: `Your case has been filed with case number ${newCase.caseNumber}`,
-      });
-
-      navigate("/cases");
-    } catch (error) {
-      console.error("Error filing case:", error);
-      toast({
-        title: "Error filing case",
-        description: "There was a problem filing your case. Please try again.",
+        title: "Missing Information",
+        description: "Please fill in all required witness fields",
         variant: "destructive",
       });
     }
   };
 
+  const removeWitness = (index: number) => {
+    setWitnesses(witnesses.filter((_, i) => i !== index));
+  };
+
+  const addEvidenceItem = (item: EvidenceItem) => {
+    setEvidenceItems([...evidenceItems, item]);
+  };
+
+  const removeEvidenceItem = (index: number) => {
+    setEvidenceItems(evidenceItems.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">File a New Case</h1>
-        <p className="text-muted-foreground">
-          Complete the form below to file a new case with the court
-        </p>
+        <p className="text-muted-foreground">Submit details to file a new court case</p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Case Information</CardTitle>
-              <CardDescription>
-                Provide the details about your case
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Case Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Property Dispute at 123 Main Street" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle>Case Filing Form</CardTitle>
+          <CardDescription>
+            Please provide complete and accurate information for this legal filing
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="plaintiff">Plaintiff</TabsTrigger>
+              <TabsTrigger value="details">Case Details</TabsTrigger>
+              <TabsTrigger value="defendant">Defendant</TabsTrigger>
+              <TabsTrigger value="witnesses">Witnesses</TabsTrigger>
+              <TabsTrigger value="evidence">Evidence</TabsTrigger>
+            </TabsList>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <TabsContent value="plaintiff" className="mt-6 space-y-4">
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Select the plaintiff (person filing the case) from your client list or add a new client.
+                    </p>
+                    
+                    <PlaintiffSelector 
+                      value={selectedPlaintiff}
+                      onChange={setSelectedPlaintiff}
+                    />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Case Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Provide a detailed description of your case..." 
-                        className="min-h-[120px]" 
-                        {...field} 
+                    {selectedPlaintiff && (
+                      <div className="mt-4 space-y-2">
+                        <h3 className="text-sm font-medium">Plaintiff Details</h3>
+                        <div className="grid grid-cols-2 gap-4 border rounded-md p-4 bg-muted/20">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Full Name</p>
+                            <p className="font-medium">{selectedPlaintiff.name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Email</p>
+                            <p className="font-medium">{selectedPlaintiff.email}</p>
+                          </div>
+                          {selectedPlaintiff.phone && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Phone</p>
+                              <p className="font-medium">{selectedPlaintiff.phone}</p>
+                            </div>
+                          )}
+                          {selectedPlaintiff.address && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Address</p>
+                              <p className="font-medium">{selectedPlaintiff.address}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-end">
+                      <Button type="button" onClick={() => setActiveTab("details")}>
+                        Next: Case Details
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="details" className="mt-6 space-y-4">
+                  <div className="grid gap-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Case Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Smith vs. Jones" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Enter a clear and concise title for the case
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Case Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select case type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="civil">Civil</SelectItem>
+                              <SelectItem value="criminal">Criminal</SelectItem>
+                              <SelectItem value="family">Family</SelectItem>
+                              <SelectItem value="corporate">Corporate</SelectItem>
+                              <SelectItem value="real_estate">Real Estate</SelectItem>
+                              <SelectItem value="bankruptcy">Bankruptcy</SelectItem>
+                              <SelectItem value="tax">Tax</SelectItem>
+                              <SelectItem value="immigration">Immigration</SelectItem>
+                              <SelectItem value="intellectual_property">Intellectual Property</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the appropriate legal category for this case
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Case Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Provide a detailed description of the case..."
+                              className="min-h-32"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Include all relevant facts and circumstances
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="court"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Court</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select court" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="district_court">District Court</SelectItem>
+                              <SelectItem value="high_court">High Court</SelectItem>
+                              <SelectItem value="supreme_court">Supreme Court</SelectItem>
+                              <SelectItem value="family_court">Family Court</SelectItem>
+                              <SelectItem value="tax_court">Tax Court</SelectItem>
+                              <SelectItem value="bankruptcy_court">Bankruptcy Court</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the court where the case will be filed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={() => setActiveTab("plaintiff")}>
+                      Back: Plaintiff
+                    </Button>
+                    <Button type="button" onClick={() => setActiveTab("defendant")}>
+                      Next: Defendant
+                    </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="defendant" className="mt-6 space-y-4">
+                  <div className="grid gap-4">
+                    <FormField
+                      control={form.control}
+                      name="defendantName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Defendant Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Full name of the defendant" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="defendantContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Defendant Contact Number (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Phone number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="defendantIdType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ID Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select ID type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="passport">Passport</SelectItem>
+                                <SelectItem value="driver_license">Driver's License</SelectItem>
+                                <SelectItem value="national_id">National ID</SelectItem>
+                                <SelectItem value="ssn">Social Security Number</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      
+                      <FormField
+                        control={form.control}
+                        name="defendantIdNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ID Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter ID number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={() => setActiveTab("details")}>
+                      Back: Case Details
+                    </Button>
+                    <Button type="button" onClick={() => setActiveTab("witnesses")}>
+                      Next: Witnesses
+                    </Button>
+                  </div>
+                </TabsContent>
 
-              <FormField
-                control={form.control}
-                name="caseType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Case Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select case type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="civil">Civil</SelectItem>
-                        <SelectItem value="criminal">Criminal</SelectItem>
-                        <SelectItem value="family">Family</SelectItem>
-                        <SelectItem value="property">Property</SelectItem>
-                        <SelectItem value="employment">Employment</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                <TabsContent value="witnesses" className="mt-6 space-y-4">
+                  <div className="space-y-6">
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-lg font-medium mb-4">Add Witness</h3>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="witness-name">Full Name</Label>
+                          <Input 
+                            id="witness-name"
+                            value={newWitness.name}
+                            onChange={(e) => setNewWitness({...newWitness, name: e.target.value})}
+                            placeholder="Full name of witness"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="witness-contact">Contact Number</Label>
+                          <Input 
+                            id="witness-contact"
+                            value={newWitness.contactNumber}
+                            onChange={(e) => setNewWitness({...newWitness, contactNumber: e.target.value})}
+                            placeholder="Phone number"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="witness-relation">Relation to Case</Label>
+                          <Select 
+                            value={newWitness.relation}
+                            onValueChange={(value) => setNewWitness({...newWitness, relation: value})}
+                          >
+                            <SelectTrigger id="witness-relation">
+                              <SelectValue placeholder="Select relation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="eyewitness">Eyewitness</SelectItem>
+                              <SelectItem value="character">Character Witness</SelectItem>
+                              <SelectItem value="expert">Expert Witness</SelectItem>
+                              <SelectItem value="family">Family Member</SelectItem>
+                              <SelectItem value="associate">Associate</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Defendant Information</CardTitle>
-              <CardDescription>
-                Information about the opposing party
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="defendant.name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Defendant Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Full name of the defendant" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <div className="space-y-2 mb-4">
+                        <Label htmlFor="witness-statement">Witness Statement (Optional)</Label>
+                        <Textarea 
+                          id="witness-statement"
+                          value={newWitness.statement}
+                          onChange={(e) => setNewWitness({...newWitness, statement: e.target.value})}
+                          placeholder="Summarize what the witness will testify about"
+                          className="min-h-20"
+                        />
+                      </div>
 
-              <FormField
-                control={form.control}
-                name="defendant.contactNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Defendant's contact number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <Button type="button" onClick={addWitness}>
+                        Add Witness
+                      </Button>
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="defendant.govIdType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Government ID Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select ID type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {GOV_ID_TYPES.map(idType => (
-                            <SelectItem key={idType.value} value={idType.value}>
-                              {idType.label}
-                            </SelectItem>
+                    {witnesses.length > 0 && (
+                      <div className="border rounded-md p-4">
+                        <h3 className="text-lg font-medium mb-4">Witness List ({witnesses.length})</h3>
+                        <div className="space-y-4">
+                          {witnesses.map((witness, index) => (
+                            <div key={index} className="border rounded-md p-3 bg-muted/10">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium">{witness.name}</h4>
+                                  <p className="text-sm text-muted-foreground">{witness.relation}</p>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => removeWitness(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Contact: </span>
+                                  {witness.contactNumber}
+                                </div>
+                                {witness.statement && (
+                                  <div className="col-span-2 mt-1">
+                                    <span className="text-muted-foreground">Statement: </span>
+                                    {witness.statement}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={() => setActiveTab("defendant")}>
+                      Back: Defendant
+                    </Button>
+                    <Button type="button" onClick={() => setActiveTab("evidence")}>
+                      Next: Evidence
+                    </Button>
+                  </div>
+                </TabsContent>
 
-                <FormField
-                  control={form.control}
-                  name="defendant.govIdNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Government ID Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ID number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-              <Button type="submit">File Case</Button>
-            </CardFooter>
-          </Card>
-        </form>
-      </Form>
+                <TabsContent value="evidence" className="mt-6 space-y-4">
+                  <div className="space-y-6">
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-lg font-medium mb-4">Upload Evidence</h3>
+                      <FileUploader onFileUploaded={addEvidenceItem} />
+                    </div>
+
+                    {evidenceItems.length > 0 && (
+                      <div className="border rounded-md p-4">
+                        <h3 className="text-lg font-medium mb-4">Evidence List ({evidenceItems.length})</h3>
+                        <div className="space-y-4">
+                          {evidenceItems.map((item, index) => (
+                            <div key={index} className="border rounded-md p-3 flex justify-between items-center bg-muted/10">
+                              <div>
+                                <h4 className="font-medium">{item.title}</h4>
+                                <p className="text-sm text-muted-foreground">{item.type}</p>
+                                {item.description && (
+                                  <p className="text-sm mt-1">{item.description}</p>
+                                )}
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => removeEvidenceItem(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={() => setActiveTab("witnesses")}>
+                      Back: Witnesses
+                    </Button>
+                    <Button type="submit" className="bg-primary">
+                      Submit Case Filing
+                    </Button>
+                  </div>
+                </TabsContent>
+              </form>
+            </Form>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };

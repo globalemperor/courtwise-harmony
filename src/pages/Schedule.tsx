@@ -1,140 +1,125 @@
 
-import { useState } from "react";
-import { useData } from "@/context/DataContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { 
+  Tabs, 
+  TabsList, 
+  TabsTrigger,
+  TabsContent
+} from "@/components/ui/tabs";
+import { FlexibleCalendar } from "@/components/schedule/FlexibleCalendar";
+import { format, isSameDay } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
+import { CalendarIcon, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useData } from "@/context/DataContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Schedule = () => {
-  const { hearings, cases } = useData();
-  const [date, setDate] = useState<Date>(new Date());
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month" | "custom">("week");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { hearings } = useData();
   
-  // Get the start and end of the current week
-  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  
-  // Filter hearings for the current week
-  const weekHearings = hearings.filter(hearing => {
+  // Format the selected date to display
+  const formattedDate = format(selectedDate, "EEEE, MMMM d, yyyy");
+
+  // Get dates that have hearings
+  const datesWithHearings = hearings.reduce((dates, hearing) => {
     const hearingDate = new Date(hearing.date);
-    return hearingDate >= weekStart && hearingDate <= weekEnd;
-  });
-
-  // Group hearings by date
-  const hearingsByDate = weekDays.map(day => {
-    const dayHearings = weekHearings.filter(hearing => {
-      return isSameDay(new Date(hearing.date), day);
-    });
+    const dateString = hearingDate.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    return {
-      date: day,
-      hearings: dayHearings.sort((a, b) => a.time.localeCompare(b.time))
-    };
+    if (!dates.includes(dateString)) {
+      dates.push(dateString);
+    }
+    
+    return dates;
+  }, [] as string[]);
+
+  // Get hearings for the selected date
+  const todaysHearings = hearings.filter(hearing => {
+    const hearingDate = new Date(hearing.date);
+    return isSameDay(hearingDate, selectedDate);
   });
 
-  // Navigate to previous/next week
-  const prevWeek = () => setDate(addDays(weekStart, -7));
-  const nextWeek = () => setDate(addDays(weekStart, 7));
-  const today = () => setDate(new Date());
+  const hasHearings = todaysHearings.length > 0;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Court Schedule</h1>
-        <p className="text-muted-foreground">Manage and view court calendar</p>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={prevWeek}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={today}>
-            Today
-          </Button>
-          <Button variant="outline" size="sm" onClick={nextWeek}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">My Schedule</h1>
+          <p className="text-muted-foreground">Manage your hearings and upcoming appointments</p>
         </div>
         
-        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(date, "MMMM yyyy")}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(newDate) => {
-                setDate(newDate || new Date());
-                setCalendarOpen(false);
-              }}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Card className="flex items-center p-2">
+            <CalendarIcon className="h-5 w-5 text-muted-foreground mr-2" />
+            <span className="text-sm">{formattedDate}</span>
+          </Card>
+          
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full sm:w-[400px]">
+            <TabsList className="grid grid-cols-4">
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+              <TabsTrigger value="custom">Custom</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-4">
-        {hearingsByDate.map(({ date, hearings }) => (
-          <Card key={date.toISOString()} className="min-h-[300px]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-center">
-                {format(date, "EEE")}
-              </CardTitle>
-              <p className="text-sm text-center font-medium">
-                {format(date, "d")}
-              </p>
-            </CardHeader>
-            <CardContent className="p-2">
-              {hearings.length === 0 ? (
-                <div className="flex justify-center items-center h-32 text-xs text-muted-foreground">
-                  No hearings
+      <FlexibleCalendar 
+        viewMode={viewMode} 
+        selectedDate={selectedDate} 
+        onDateSelect={setSelectedDate}
+        highlightedDates={datesWithHearings}
+      />
+      
+      {/* No hearings message */}
+      {!hasHearings && (
+        <Alert variant="default" className="bg-muted/50">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            No hearings or appointments scheduled for {formattedDate}.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Show hearings for the selected date */}
+      {hasHearings && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-medium">Hearings on {formattedDate}</h2>
+          {todaysHearings.map((hearing) => (
+            <Card key={hearing.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Time</p>
+                    <p className="font-medium">{hearing.time}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="font-medium">{hearing.location}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className={`font-medium ${
+                      hearing.status === "scheduled" ? "text-green-600" : 
+                      hearing.status === "cancelled" ? "text-red-600" : 
+                      "text-amber-600"
+                    }`}>
+                      {hearing.status.charAt(0).toUpperCase() + hearing.status.slice(1)}
+                    </p>
+                  </div>
+                  <div className="md:col-span-3">
+                    <p className="text-sm text-muted-foreground">Description</p>
+                    <p>{hearing.description}</p>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {hearings.map(hearing => {
-                    const relatedCase = cases.find(c => c.id === hearing.caseId);
-                    
-                    return (
-                      <div 
-                        key={hearing.id} 
-                        className="p-2 text-xs rounded-md bg-muted/60 border border-border"
-                      >
-                        <div className="font-medium truncate">
-                          {relatedCase?.title || `Case #${hearing.caseId}`}
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <Clock className="h-3 w-3 mr-1" />
-                          <span>{hearing.time}</span>
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          <span className="truncate">{hearing.location}</span>
-                        </div>
-                        <Badge 
-                          variant="outline" 
-                          className="mt-1 w-full justify-center"
-                        >
-                          {hearing.status}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/context/AuthContext";
-import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { Gavel, User, UserCog, Scale, PenLine, Info } from "lucide-react";
+import { Navigate, useLocation, useParams, useSearchParams, Link } from "react-router-dom";
+import { Gavel, User, UserCog, Scale, PenLine, Info, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -143,6 +143,14 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gradient-to-br from-court-gray to-court-blue/10 p-4">
+      {/* Back button - added at the top left */}
+      <Link 
+        to="/" 
+        className="absolute top-4 left-4 flex items-center text-court-blue hover:underline"
+      >
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
+      </Link>
+      
       {/* Left side - branding (hidden on mobile) */}
       <div className={`hidden md:flex flex-col items-center md:items-start space-y-8 md:w-1/2 p-8 transition-all duration-700 ease-in-out ${showAnimation ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
         <div className="flex items-center space-x-4">
@@ -168,64 +176,32 @@ const Login = () => {
                 <Info className="h-4 w-4 mr-1" /> How to use CourtWise
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="max-w-3xl">
+            <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Getting Started with CourtWise</AlertDialogTitle>
                 <AlertDialogDescription>
-                  <div className="space-y-4 mt-2 max-h-[60vh] overflow-y-auto pr-2">
-                    <div className="border-b pb-3">
-                      <h3 className="text-lg font-semibold mb-2">For Clients</h3>
-                      <ul className="space-y-1 text-sm">
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
-                          <span>Sign up with your details and government ID</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
-                          <span>Find and connect with lawyers for your case</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-green-100 rounded-full text-green-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
-                          <span>Track progress and communicate securely</span>
-                        </li>
-                      </ul>
+                  <div className="space-y-4 mt-2">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <h3 className="font-semibold text-blue-700">Clients</h3>
+                        <p className="text-sm mt-1">Find lawyers and track your case progress</p>
+                      </div>
+                      
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <h3 className="font-semibold text-green-700">Lawyers</h3>
+                        <p className="text-sm mt-1">Manage cases and communicate with courts</p>
+                      </div>
+                      
+                      <div className="bg-purple-50 rounded-lg p-3">
+                        <h3 className="font-semibold text-purple-700">Officials</h3>
+                        <p className="text-sm mt-1">Schedule hearings and process filings</p>
+                      </div>
                     </div>
                     
-                    <div className="border-b pb-3">
-                      <h3 className="text-lg font-semibold mb-2">For Lawyers</h3>
-                      <ul className="space-y-1 text-sm">
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
-                          <span>Create your profile with credentials</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
-                          <span>Accept client cases and file documentation</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-blue-100 rounded-full text-blue-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
-                          <span>Manage schedules and communicate with court officials</span>
-                        </li>
-                      </ul>
-                    </div>
-                    
-                    <div className="border-b pb-3">
-                      <h3 className="text-lg font-semibold mb-2">For Court Officials</h3>
-                      <ul className="space-y-1 text-sm">
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">1</span>
-                          <span>Access cases and schedule hearings</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">2</span>
-                          <span>Process filings and maintain court records</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="h-5 w-5 bg-purple-100 rounded-full text-purple-600 flex items-center justify-center mr-2 text-xs font-bold">3</span>
-                          <span>Issue judgments and update case statuses</span>
-                        </li>
-                      </ul>
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Sign up with your details, complete your profile, and start 
+                      using features specific to your role.
+                    </p>
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>

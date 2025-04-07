@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate, Outlet } from "react-router-dom";
 import { useState } from "react";
+import { ChatbotProvider } from "@/components/support/ChatbotProvider";
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -28,6 +29,7 @@ const MainLayout = () => {
         <Outlet />
       </main>
       <Toaster />
+      <ChatbotProvider />
     </div>
   );
 };
