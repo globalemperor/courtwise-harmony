@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-export type UserRole = "Client" | "Lawyer" | "Clerk" | "Judge";
-=======
 // Original user types
 export type UserRole = 'client' | 'lawyer' | 'clerk' | 'judge';
 
@@ -57,60 +54,17 @@ export interface EvidenceItem {
   type: string;
   fileUrl?: string;
 }
->>>>>>> 17cf6e4 (New UI)
 
 export interface Case {
   id: string;
   title: string;
   description: string;
-  caseNumber: string;
-  type: string;
-  status: string;
+  caseNumber?: string; // Make caseNumber optional to accommodate empty_cases.json
+  status: CaseStatus;
   clientId: string;
-  lawyerId: string;
-  judgeId: string;
+  lawyerId?: string;
   createdAt: string;
   updatedAt: string;
-<<<<<<< HEAD
-  filingDate: string;
-  nextHearingDate: string;
-  documents: Document[];
-  parties: Party[];
-}
-
-export interface Document {
-  id: string;
-  name: string;
-  url: string;
-  uploadedBy: string;
-  uploadedAt: string;
-}
-
-export interface Party {
-  id: string;
-  name: string;
-  role: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  password?: string;
-  role: UserRole;
-  avatarUrl?: string;
-  // Lawyer specific fields
-  barId?: string;
-  yearsOfExperience?: string;
-  specialization?: string;
-  // Judge specific fields
-  chamberNumber?: string;
-  courtDistrict?: string;
-  yearsOnBench?: string;
-  // Clerk specific fields
-  courtId?: string;
-  department?: string;
-=======
   nextHearingDate?: string;
   filedDate?: string;
   courtRoom?: string;
@@ -141,17 +95,16 @@ export interface User {
   // Add new fields for witnesses and evidence
   witnesses?: Witness[];
   evidence?: EvidenceItem[];
->>>>>>> 17cf6e4 (New UI)
 }
 
 export interface Message {
   id: string;
   senderId: string;
-  receiverId: string;
+  senderRole: UserRole;
+  recipientId: string;
+  recipientRole: UserRole;
+  caseId?: string;
   content: string;
-<<<<<<< HEAD
-  timestamp: string;
-=======
   read: boolean;
   createdAt: string;
 }
@@ -171,7 +124,6 @@ export interface ReschedulingRecord {
   reason: string;
   judgeId: string;
   rescheduledAt: string;
->>>>>>> 17cf6e4 (New UI)
 }
 
 export interface Hearing {
@@ -180,8 +132,23 @@ export interface Hearing {
   date: string;
   time: string;
   location: string;
-  judgeId: string;
   description: string;
+  status: string;
+  participants?: string[];
+  notes?: string;
+  rescheduled?: boolean;
+  reschedulingHistory?: ReschedulingRecord[];
+}
+
+export interface Evidence {
+  id: string;
+  caseId: string;
+  title: string;
+  description: string;
+  fileUrl?: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  fileType?: string;
 }
 
 // Supabase specific types - these are interfaces that match our Supabase tables
